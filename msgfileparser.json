@@ -1,0 +1,171 @@
+{
+    "appid": "e0b31412-4545-43eb-ad86-b1e466b38e7f",
+    "name": "MSG File Parser",
+    "description": "This app parses an outlook .msg file and extracts IOCs into Container and Artifacts",
+    "type": "email",
+    "product_vendor": "Phantom",
+    "logo": "msgfileparser.svg",
+    "logo_dark": "msgfileparser_dark.svg",
+    "product_name": "MSG File Parser",
+    "product_version_regex": ".*",
+    "publisher": "Phantom",
+    "license": "Copyright (c) Phantom Cyber Corporation, 2018",
+    "app_version": "1.0.0",
+    "utctime_updated": "2018-04-19T05:21:47.763841Z",
+    "package_name": "phantom_msgfileparser",
+    "main_module": "msgfileparser_connector.pyc",
+    "min_phantom_version": "3.5.200",
+    "app_wizard_version": "1.0.0",
+    "configuration": {},
+    "pip_dependencies": {
+        "wheel": [
+            {
+                "module": "olefile",
+                "input_file": "wheels/olefile-0.45.1-py2.py3-none-any.whl"
+            },
+            {
+                "module": "ExtractMsg",
+                "input_file": "wheels/ExtractMsg-0.3-py2-none-any.whl"
+            },
+            {
+                "module": "IMAPClient",
+                "input_file": "wheels/IMAPClient-2.0.0-py2.py3-none-any.whl"
+            }
+        ]
+    },
+    "actions": [
+        {
+            "action": "extract ioc",
+            "identifier": "extract_ioc",
+            "description": "Extract IOCs into Container and Artifacts",
+            "verbose": "This action requires the input vault file to be an Outlook MSG file",
+            "type": "generic",
+            "read_only": false,
+            "parameters": {
+                "vault_id": {
+                    "description": "Vault ID",
+                    "data_type": "string",
+                    "required": true,
+                    "primary": true,
+                    "contains": [
+                        "vault id",
+                        "sha1"
+                    ],
+                    "order": 0
+                },
+                "container_id": {
+                    "description": "Add created artifacts to this container",
+                    "data_type": "numeric",
+                    "required": false,
+                    "primary": false,
+                    "contains": [
+                        "phantom container id"
+                    ],
+                    "order": 1
+                },
+                "label": {
+                    "description": "Add Container to this Label",
+                    "data_type": "string",
+                    "required": false,
+                    "primary": false,
+                    "contains": [
+                        "phantom container label"
+                    ],
+                    "order": 2
+                }
+            },
+            "output": [
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string",
+                    "column_name": "status",
+                    "column_order": 4,
+                    "example_values": [
+                        "success"
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.container_id",
+                    "data_type": "numeric",
+                    "contains": [
+                        "phantom container id"
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.label",
+                    "data_type": "string",
+                    "column_name": "label",
+                    "contains": [
+                        "phantom container label"
+                    ],
+                    "column_order": 3,
+                    "example_values": [
+                        "events"
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.vault_id",
+                    "data_type": "string",
+                    "contains": [
+                        "vault id",
+                        "sha1"
+                    ],
+                    "column_name": "vault_id",
+                    "column_order": 2,
+                    "example_values": [
+                        "492cafe7223b63c03413a290b8b7cefdfbc9e5d2"
+                    ]
+                },
+                {
+                    "data_path": "action_result.data",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.artifacts_found",
+                    "data_type": "numeric",
+                    "example_values": [
+                        2
+                    ]
+                },
+                {
+                    "data_path": "action_result.summary.container_id",
+                    "data_type": "numeric",
+                    "example_values": [
+                        256
+                    ],
+                    "column_name": "container_id",
+                    "column_order": 1
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string",
+                    "example_values": [
+                        "Container id: 256, Artifacts found: 2"
+                    ]
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric",
+                    "example_values": [
+                        1
+                    ]
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric",
+                    "example_values": [
+                        1
+                    ]
+                }
+            ],
+            "render": {
+                "type": "table"
+            },
+            "versions": "EQ(*)"
+        }
+    ]
+}

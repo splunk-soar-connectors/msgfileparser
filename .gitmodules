@@ -1,0 +1,4 @@
+[submodule "wheels"]
+	path = wheels
+	url = ssh://git@bitbucket.phantom.us:7999/per/msgfileparser_deps.git
+	ignore = dirty
