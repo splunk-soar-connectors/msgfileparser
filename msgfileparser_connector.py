@@ -35,10 +35,6 @@ _container_common = {
     "run_automation": False  # Don't run any playbooks, when this artifact is added
 }
 
-_artifact_common = {
-    "run_automation": False  # Don't run any playbooks, when this artifact is added
-}
-
 
 class RetVal(tuple):
     def __new__(cls, val1, val2=None):
@@ -318,7 +314,6 @@ class MsgFileParserConnector(BaseConnector):
             # convert from CaseInsensitive to normal dict, so that it is serializable
             cef_artifact['emailHeaders'] = dict(headers)
 
-        email_artifact.update(_artifact_common)
         email_artifact['name'] = 'Email Artifact'
         email_artifact['cef'] = cef_artifact
         email_artifact['cef_types'] = cef_types
@@ -381,9 +376,7 @@ class MsgFileParserConnector(BaseConnector):
 
         return UnicodeDammit(string).unicode_markup.encode('utf-8')
 
-    def _save_artifacts(self, action_result, artifacts, container_id, max_artifacts=None):
-        if max_artifacts:
-            artifacts = artifacts[:max_artifacts]
+    def _save_artifacts(self, action_result, artifacts, container_id):
 
         for artifact in artifacts:
             artifact['container_id'] = container_id
@@ -396,25 +389,36 @@ class MsgFileParserConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR, message)
         return phantom.APP_SUCCESS
 
-    def _save_to_container(self, action_result, container, artifacts, label, max_artifacts=None):
+    def _create_container(self, action_result, email_artifact, label, vault_path):
 
+        # create a container
+        container = dict()
+
+        try:
+            container['name'] = email_artifact['cef']['emailHeaders']['Subject']
+        except:
+            container['name'] = os.path.basename(vault_path)
+
+        # we don't/can't add a raw_email to this container, .msg file does not contain the email
+        # in rfc822 format
+        container['source_data_identifier'] = self._create_dict_hash(container)
         container['label'] = label
         container.update(_container_common)
 
         status, message, container_id = self.save_container(container)
-        if phantom.is_fail(status):
-            return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
+        if (phantom.is_fail(status)):
+            return RetVal(action_result.set_status(status, message))
 
-        return RetVal(self._save_artifacts(action_result, artifacts, container_id, max_artifacts), container_id)
+        return (phantom.APP_SUCCESS, container_id)
 
-    def _save_to_existing_container(self, action_result, artifacts, container_id, max_artifacts=None):
-        return self._save_artifacts(action_result, artifacts, container_id, max_artifacts)
+    def _save_to_existing_container(self, action_result, artifacts, container_id):
+        return self._save_artifacts(action_result, artifacts, container_id)
 
     def _handle_extract_ioc(self, param):
 
-        # Add an action result object to self (BaseConnector) to represent the action for this param
         action_result = self.add_action_result(ActionResult(dict(param)))
 
+        # validate the container id
         container_id = param.get('container_id')
         label = param.get('label')
         if container_id is None and label is None:
@@ -446,36 +450,28 @@ class MsgFileParserConnector(BaseConnector):
         ret_val = self._create_email_artifact(msg, email_artifact, action_result)
 
         if (phantom.is_fail(ret_val)):
-            return RetVal(action_result.get_status())
+            return action_result.get_status()
 
         artifacts.append(email_artifact)
 
-        container = dict()
-        try:
-            container['name'] = email_artifact['cef']['emailHeaders']['Subject']
-        except:
-            container['name'] = os.path.basename(vault_path)
-
-        # we don't/can't add a raw_email to this container, .msg file does not contain the email
-        # in rfc822 format
-        container['source_data_identifier'] = self._create_dict_hash(container)
-
-        # save artifacts to the container after creating one if necessary
+        # create a container if required
         if not container_id:
-            ret_val, container_id = self._save_to_container(action_result, container, artifacts, label)
+
+            ret_val, container_id = self._create_container(action_result, email_artifact, label, vault_path)
+
             if phantom.is_fail(ret_val):
-                return ret_val
-        else:
-            ret_val = self._save_to_existing_container(action_result, artifacts, container_id)
-            if phantom.is_fail(ret_val):
-                return ret_val
+                return action_result.get_status()
 
         # now work on the attachments
         ret_val, vault_artifacts = self._add_attachments_to_container(msg, container_id, action_result)
 
-        if (vault_artifacts):
-            artifacts.append(vault_artifacts)
-            self._save_to_existing_container(action_result, vault_artifacts, container_id)
+        if (phantom.is_success(ret_val) and vault_artifacts):
+            artifacts.extend(vault_artifacts)
+
+        # now add all the artifacts
+        ret_val = self._save_to_existing_container(action_result, artifacts, container_id)
+        if phantom.is_fail(ret_val):
+            return ret_val
 
         # Add a dictionary that is made up of the most important values from data into the summary
         summary = action_result.update_summary({})
