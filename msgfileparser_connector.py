@@ -299,7 +299,7 @@ class MsgFileParserConnector(BaseConnector):
         if ((not cef_artifact) and (message_id is None)):
             return phantom.APP_ERROR
 
-        cef_artifact['body'] = decode_utf7(msg.body)
+        cef_artifact['body'] = self._extract_str(msg.body)
 
         try:
             body_html = msg._getStringStream('__substg1.0_1013')
