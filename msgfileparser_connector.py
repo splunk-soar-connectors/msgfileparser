@@ -414,7 +414,7 @@ class MsgFileParserConnector(BaseConnector):
     def _save_to_existing_container(self, action_result, artifacts, container_id):
         return self._save_artifacts(action_result, artifacts, container_id)
 
-    def _handle_extract_ioc(self, param):
+    def _handle_extract_email(self, param):
 
         action_result = self.add_action_result(ActionResult(dict(param)))
 
@@ -492,8 +492,8 @@ class MsgFileParserConnector(BaseConnector):
         if action_id == 'test_connectivity':
             ret_val = self._handle_test_connectivity(param)
 
-        elif action_id == 'extract_ioc':
-            ret_val = self._handle_extract_ioc(param)
+        elif action_id == 'extract_email':
+            ret_val = self._handle_extract_email(param)
 
         return ret_val
 

@@ -35,9 +35,9 @@
     },
     "actions": [
         {
-            "action": "extract ioc",
-            "identifier": "extract_ioc",
-            "description": "Extract IOCs into Container and Artifacts",
+            "action": "extract email",
+            "identifier": "extract_email",
+            "description": "Extract email data from Outlook MSG files",
             "verbose": "This action requires the input vault file to be an Outlook MSG file",
             "type": "generic",
             "read_only": false,
