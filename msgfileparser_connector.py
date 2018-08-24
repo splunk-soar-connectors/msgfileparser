@@ -304,7 +304,7 @@ class MsgFileParserConnector(BaseConnector):
         try:
             body_html = msg._getStringStream('__substg1.0_1013')
             if (body_html):
-                cef_artifact['bodyHtml'] = body_html
+                cef_artifact['bodyHtml'] = self._extract_str(body_html)
         except:
             pass
 
