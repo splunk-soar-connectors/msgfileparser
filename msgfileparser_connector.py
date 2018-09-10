@@ -266,7 +266,7 @@ class MsgFileParserConnector(BaseConnector):
 
         return headers
 
-    def _create_email_artifact(self, msg, email_artifact, action_result, charset=None):
+    def _create_email_artifact(self, msg, email_artifact, action_result, artifact_name, charset=None):
 
         try:
             email_text = msg._getStringStream('__substg1.0_007D')
@@ -299,12 +299,12 @@ class MsgFileParserConnector(BaseConnector):
         if ((not cef_artifact) and (message_id is None)):
             return phantom.APP_ERROR
 
-        cef_artifact['body'] = self._extract_str(msg.body)
+        cef_artifact['bodyText'] = self._extract_str(msg.body)
 
         try:
             body_html = msg._getStringStream('__substg1.0_1013')
             if (body_html):
-                cef_artifact['bodyHtml'] = self._extract_str(body_html)
+                cef_artifact['bodyHtml'] = body_html
         except:
             pass
 
@@ -314,7 +314,7 @@ class MsgFileParserConnector(BaseConnector):
             # convert from CaseInsensitive to normal dict, so that it is serializable
             cef_artifact['emailHeaders'] = dict(headers)
 
-        email_artifact['name'] = 'Email Artifact'
+        email_artifact['name'] = artifact_name
         email_artifact['cef'] = cef_artifact
         email_artifact['cef_types'] = cef_types
 
@@ -349,9 +349,11 @@ class MsgFileParserConnector(BaseConnector):
             # get the file name
             file_name = (curr_attach.longFilename or curr_attach.shortFilename or 'attached_file-{0}'.format(i))
 
+            file_name = UnicodeDammit(file_name).unicode_markup.encode('utf-8')
+
             try:
                 fd, tmp_file_path = tempfile.mkstemp(dir='/opt/phantom/vault/tmp')
-                os.write(fd, curr_attach.data)
+                os.write(fd, UnicodeDammit(curr_attach.data).unicode_markup.encode('utf-8'))
                 os.close(fd)
             except Exception as e:
                 return RetVal(action_result.set_status(phantom.APP_ERROR,
@@ -447,7 +449,7 @@ class MsgFileParserConnector(BaseConnector):
         # create the email artifact
         email_artifact = dict()
 
-        ret_val = self._create_email_artifact(msg, email_artifact, action_result)
+        ret_val = self._create_email_artifact(msg, email_artifact, action_result, param['artifact_name'])
 
         if (phantom.is_fail(ret_val)):
             return action_result.get_status()

@@ -72,6 +72,14 @@
                         "phantom container label"
                     ],
                     "order": 2
+                },
+                "artifact_name": {
+                    "description": "Name of artifact, default (Email Artifact)",
+                    "data_type": "string",
+                    "required": true,
+                    "primary": false,
+                    "default": "Email Artifact",
+                    "order": 3
                 }
             },
             "output": [
