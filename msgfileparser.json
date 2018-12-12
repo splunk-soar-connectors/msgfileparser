@@ -9,7 +9,7 @@
     "product_name": "MSG File Parser",
     "product_version_regex": ".*",
     "publisher": "Phantom",
-    "license": "Copyright (c) Phantom Cyber Corporation, 2018",
+    "license": "Copyright (c) 2018 Splunk Inc.",
     "app_version": "1.0.4",
     "utctime_updated": "2018-12-07T01:05:03.000000Z",
     "package_name": "phantom_msgfileparser",
