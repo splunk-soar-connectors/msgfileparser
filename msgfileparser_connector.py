@@ -352,7 +352,10 @@ class MsgFileParserConnector(BaseConnector):
             file_name = UnicodeDammit(file_name).unicode_markup.encode('utf-8')
 
             try:
-                fd, tmp_file_path = tempfile.mkstemp(dir='/opt/phantom/vault/tmp')
+                if hasattr(Vault, 'get_vault_tmp_dir'):
+                    fd, tmp_file_path = tempfile.mkstemp(dir=Vault.get_vault_tmp_dir())
+                else:
+                    fd, tmp_file_path = tempfile.mkstemp(dir='/opt/phantom/vault/tmp')
                 os.write(fd, UnicodeDammit(curr_attach.data).unicode_markup.encode('utf-8'))
                 os.close(fd)
             except Exception as e:
