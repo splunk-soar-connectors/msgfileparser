@@ -4,12 +4,12 @@
     "description": "This app parses an outlook .msg file and extracts IOCs into Container and Artifacts",
     "type": "email",
     "product_vendor": "Phantom",
-    "logo": "msgfileparser.svg",
-    "logo_dark": "msgfileparser_dark.svg",
+    "logo": "logo_msgfileparser.svg",
+    "logo_dark": "logo_msgfileparser_dark.svg",
     "product_name": "MSG File Parser",
     "product_version_regex": ".*",
     "publisher": "Phantom",
-    "license": "Copyright (c) 2018 Splunk Inc.",
+    "license": "Copyright (c) 2018-2019 Splunk Inc.",
     "app_version": "1.0.6",
     "utctime_updated": "2018-12-20T03:01:24.000000Z",
     "package_name": "phantom_msgfileparser",
@@ -91,6 +91,10 @@
                     "example_values": [
                         "success"
                     ]
+                },
+                {
+                    "data_path": "action_result.parameter.artifact_name",
+                    "data_type": "string"
                 },
                 {
                     "data_path": "action_result.parameter.container_id",
