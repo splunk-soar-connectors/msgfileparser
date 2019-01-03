@@ -1,5 +1,5 @@
 # File: msgfileparser_connector.py
-# Copyright (c) 2018-2019 Splunk Inc.
+# Copyright (c) 2019 Splunk Inc.
 #
 # SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
 # without a valid written license from Splunk Inc. is PROHIBITED.
@@ -15,7 +15,6 @@ from bs4 import BeautifulSoup
 from bs4 import UnicodeDammit
 from ExtractMsg import Message
 from phantom.vault import Vault
-from imapclient.imapclient import decode_utf7
 import tempfile
 import os
 import email
@@ -265,7 +264,7 @@ class MsgFileParserConnector(BaseConnector):
             mail = email.message_from_string(email_text)
         except Exception as e:
             return action_result.set_status(phantom.APP_ERROR,
-                    "Unable to get header string from message. Error: {%s}".format(str(e)))
+                    "Unable to get email header string from message. Error: {0}".format(str(e)))
 
         headers = self._get_email_headers_from_mail(mail, charset)
 
