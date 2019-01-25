@@ -146,6 +146,9 @@
                 {
                     "data_path": "action_result.summary.container_id",
                     "data_type": "numeric",
+                    "contains": [
+                        "phantom container id"
+                    ],
                     "example_values": [
                         256
                     ],
