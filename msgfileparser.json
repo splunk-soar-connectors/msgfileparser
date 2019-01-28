@@ -1,22 +1,161 @@
 {
-    "appid": "e0b31412-4545-43eb-ad86-b1e466b38e7f",
-    "name": "MSG File Parser",
-    "description": "This app parses an outlook .msg file and extracts IOCs into Container and Artifacts",
-    "type": "email",
-    "product_vendor": "Phantom",
-    "logo": "logo_msgfileparser.svg",
-    "logo_dark": "logo_msgfileparser_dark.svg",
-    "product_name": "MSG File Parser",
     "product_version_regex": ".*",
-    "publisher": "Phantom",
-    "license": "Copyright (c) 2018-2019 Splunk Inc.",
-    "app_version": "1.0.8",
-    "utctime_updated": "2019-01-16T02:18:03.000000Z",
+    "description": "This app parses an outlook .msg file and extracts IOCs into Container and Artifacts",
     "package_name": "phantom_msgfileparser",
-    "main_module": "msgfileparser_connector.pyc",
-    "min_phantom_version": "4.0.1068",
-    "app_wizard_version": "1.0.0",
+    "utctime_updated": "2019-01-28T19:35:33.000000Z",
+    "actions": [
+        {
+            "read_only": false,
+            "description": "Extract email data from Outlook MSG files",
+            "parameters": {
+                "artifact_name": {
+                    "description": "Name of artifact, default (Email Artifact)",
+                    "data_type": "string",
+                    "default": "Email Artifact",
+                    "required": true,
+                    "primary": false,
+                    "order": 3
+                },
+                "container_id": {
+                    "required": false,
+                    "description": "Add created artifacts to this container",
+                    "data_type": "numeric",
+                    "contains": [
+                        "phantom container id"
+                    ],
+                    "primary": false,
+                    "order": 1
+                },
+                "vault_id": {
+                    "required": true,
+                    "description": "Vault ID",
+                    "data_type": "string",
+                    "contains": [
+                        "vault id",
+                        "sha1"
+                    ],
+                    "primary": true,
+                    "order": 0
+                },
+                "label": {
+                    "required": false,
+                    "description": "Add Container to this Label",
+                    "data_type": "string",
+                    "contains": [
+                        "phantom container label"
+                    ],
+                    "primary": false,
+                    "order": 2
+                }
+            },
+            "versions": "EQ(*)",
+            "render": {
+                "type": "table"
+            },
+            "action": "extract email",
+            "output": [
+                {
+                    "column_order": 4,
+                    "data_path": "action_result.status",
+                    "example_values": [
+                        "success"
+                    ],
+                    "data_type": "string",
+                    "column_name": "status"
+                },
+                {
+                    "data_path": "action_result.parameter.artifact_name",
+                    "data_type": "string"
+                },
+                {
+                    "contains": [
+                        "phantom container id"
+                    ],
+                    "data_path": "action_result.parameter.container_id",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.parameter.label",
+                    "data_type": "string",
+                    "contains": [
+                        "phantom container label"
+                    ],
+                    "example_values": [
+                        "events"
+                    ],
+                    "column_order": 3,
+                    "column_name": "label"
+                },
+                {
+                    "data_path": "action_result.parameter.vault_id",
+                    "data_type": "string",
+                    "contains": [
+                        "vault id",
+                        "sha1"
+                    ],
+                    "example_values": [
+                        "492cafe7223b63c03413a290b8b7cefdfbc9e5d2"
+                    ],
+                    "column_order": 2,
+                    "column_name": "vault_id"
+                },
+                {
+                    "data_path": "action_result.data",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "action_result.summary.artifacts_found",
+                    "example_values": [
+                        2
+                    ],
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.summary.container_id",
+                    "data_type": "numeric",
+                    "contains": [
+                        "phantom container id"
+                    ],
+                    "example_values": [
+                        256
+                    ],
+                    "column_order": 1,
+                    "column_name": "container_id"
+                },
+                {
+                    "data_path": "action_result.message",
+                    "example_values": [
+                        "Container id: 256, Artifacts found: 2"
+                    ],
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "example_values": [
+                        1
+                    ],
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "example_values": [
+                        1
+                    ],
+                    "data_type": "numeric"
+                }
+            ],
+            "identifier": "extract_email",
+            "type": "generic",
+            "verbose": "This action requires the input vault file to be an Outlook MSG file"
+        }
+    ],
+    "logo": "logo_msgfileparser.svg",
     "configuration": {},
+    "product_vendor": "Phantom",
     "pip_dependencies": {
         "wheel": [
             {
@@ -33,154 +172,15 @@
             }
         ]
     },
-    "actions": [
-        {
-            "action": "extract email",
-            "identifier": "extract_email",
-            "description": "Extract email data from Outlook MSG files",
-            "verbose": "This action requires the input vault file to be an Outlook MSG file",
-            "type": "generic",
-            "read_only": false,
-            "parameters": {
-                "vault_id": {
-                    "description": "Vault ID",
-                    "data_type": "string",
-                    "required": true,
-                    "primary": true,
-                    "contains": [
-                        "vault id",
-                        "sha1"
-                    ],
-                    "order": 0
-                },
-                "container_id": {
-                    "description": "Add created artifacts to this container",
-                    "data_type": "numeric",
-                    "required": false,
-                    "primary": false,
-                    "contains": [
-                        "phantom container id"
-                    ],
-                    "order": 1
-                },
-                "label": {
-                    "description": "Add Container to this Label",
-                    "data_type": "string",
-                    "required": false,
-                    "primary": false,
-                    "contains": [
-                        "phantom container label"
-                    ],
-                    "order": 2
-                },
-                "artifact_name": {
-                    "description": "Name of artifact, default (Email Artifact)",
-                    "data_type": "string",
-                    "required": true,
-                    "primary": false,
-                    "default": "Email Artifact",
-                    "order": 3
-                }
-            },
-            "output": [
-                {
-                    "data_path": "action_result.status",
-                    "data_type": "string",
-                    "column_name": "status",
-                    "column_order": 4,
-                    "example_values": [
-                        "success"
-                    ]
-                },
-                {
-                    "data_path": "action_result.parameter.artifact_name",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.parameter.container_id",
-                    "data_type": "numeric",
-                    "contains": [
-                        "phantom container id"
-                    ]
-                },
-                {
-                    "data_path": "action_result.parameter.label",
-                    "data_type": "string",
-                    "column_name": "label",
-                    "contains": [
-                        "phantom container label"
-                    ],
-                    "column_order": 3,
-                    "example_values": [
-                        "events"
-                    ]
-                },
-                {
-                    "data_path": "action_result.parameter.vault_id",
-                    "data_type": "string",
-                    "contains": [
-                        "vault id",
-                        "sha1"
-                    ],
-                    "column_name": "vault_id",
-                    "column_order": 2,
-                    "example_values": [
-                        "492cafe7223b63c03413a290b8b7cefdfbc9e5d2"
-                    ]
-                },
-                {
-                    "data_path": "action_result.data",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.summary",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.summary.artifacts_found",
-                    "data_type": "numeric",
-                    "example_values": [
-                        2
-                    ]
-                },
-                {
-                    "data_path": "action_result.summary.container_id",
-                    "data_type": "numeric",
-                    "contains": [
-                        "phantom container id"
-                    ],
-                    "example_values": [
-                        256
-                    ],
-                    "column_name": "container_id",
-                    "column_order": 1
-                },
-                {
-                    "data_path": "action_result.message",
-                    "data_type": "string",
-                    "example_values": [
-                        "Container id: 256, Artifacts found: 2"
-                    ]
-                },
-                {
-                    "data_path": "summary.total_objects",
-                    "data_type": "numeric",
-                    "example_values": [
-                        1
-                    ]
-                },
-                {
-                    "data_path": "summary.total_objects_successful",
-                    "data_type": "numeric",
-                    "example_values": [
-                        1
-                    ]
-                }
-            ],
-            "render": {
-                "type": "table"
-            },
-            "versions": "EQ(*)"
-        }
-    ]
+    "logo_dark": "logo_msgfileparser_dark.svg",
+    "publisher": "Phantom",
+    "name": "MSG File Parser",
+    "license": "Copyright (c) 2018-2019 Splunk Inc.",
+    "min_phantom_version": "4.0.1068",
+    "product_name": "MSG File Parser",
+    "appid": "e0b31412-4545-43eb-ad86-b1e466b38e7f",
+    "app_wizard_version": "1.0.0",
+    "app_version": "1.0.9",
+    "type": "email",
+    "main_module": "msgfileparser_connector.pyc"
 }
