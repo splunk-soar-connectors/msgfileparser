@@ -1,8 +1,39 @@
 {
-    "product_version_regex": ".*",
+    
+    "appid": "e0b31412-4545-43eb-ad86-b1e466b38e7f",
+    "name": "MSG File Parser",
     "description": "This app parses an outlook .msg file and extracts IOCs into Container and Artifacts",
-    "package_name": "phantom_msgfileparser",
+    "type": "email",
+    "product_vendor": "Phantom",
+    "logo": "logo_msgfileparser.svg",
+    "logo_dark": "logo_msgfileparser_dark.svg",
+    "product_name": "MSG File Parser",
+    "product_version_regex": ".*",
+    "publisher": "Phantom",
+    "license": "Copyright (c) 2018-2019 Splunk Inc.",
+    "app_version": "1.0.9",
     "utctime_updated": "2019-01-28T19:35:33.000000Z",
+    "package_name": "phantom_msgfileparser",
+    "main_module": "msgfileparser_connector.pyc",
+    "min_phantom_version": "4.0.1068",
+    "app_wizard_version": "1.0.0",
+    "configuration": {},
+    "pip_dependencies": {
+        "wheel": [
+            {
+                "module": "olefile",
+                "input_file": "wheels/olefile-0.45.1-py2.py3-none-any.whl"
+            },
+            {
+                "module": "ExtractMsg",
+                "input_file": "wheels/ExtractMsg-0.3-py2-none-any.whl"
+            },
+            {
+                "module": "IMAPClient",
+                "input_file": "wheels/IMAPClient-2.0.0-py2.py3-none-any.whl"
+            }
+        ]
+    },
     "actions": [
         {
             "read_only": false,
@@ -152,35 +183,5 @@
             "type": "generic",
             "verbose": "This action requires the input vault file to be an Outlook MSG file"
         }
-    ],
-    "logo": "logo_msgfileparser.svg",
-    "configuration": {},
-    "product_vendor": "Phantom",
-    "pip_dependencies": {
-        "wheel": [
-            {
-                "module": "olefile",
-                "input_file": "wheels/olefile-0.45.1-py2.py3-none-any.whl"
-            },
-            {
-                "module": "ExtractMsg",
-                "input_file": "wheels/ExtractMsg-0.3-py2-none-any.whl"
-            },
-            {
-                "module": "IMAPClient",
-                "input_file": "wheels/IMAPClient-2.0.0-py2.py3-none-any.whl"
-            }
-        ]
-    },
-    "logo_dark": "logo_msgfileparser_dark.svg",
-    "publisher": "Phantom",
-    "name": "MSG File Parser",
-    "license": "Copyright (c) 2018-2019 Splunk Inc.",
-    "min_phantom_version": "4.0.1068",
-    "product_name": "MSG File Parser",
-    "appid": "e0b31412-4545-43eb-ad86-b1e466b38e7f",
-    "app_wizard_version": "1.0.0",
-    "app_version": "1.0.9",
-    "type": "email",
-    "main_module": "msgfileparser_connector.pyc"
+    ]
 }
