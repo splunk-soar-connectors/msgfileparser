@@ -1,5 +1,4 @@
 {
-    
     "appid": "e0b31412-4545-43eb-ad86-b1e466b38e7f",
     "name": "MSG File Parser",
     "description": "This app parses an outlook .msg file and extracts IOCs into Container and Artifacts",
