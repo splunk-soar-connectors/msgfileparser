@@ -9,7 +9,7 @@
     "product_name": "MSG File Parser",
     "product_version_regex": ".*",
     "publisher": "Phantom",
-    "license": "Copyright (c) 2018-2019 Splunk Inc.",
+    "license": "Copyright (c) 2019 Splunk Inc.",
     "app_version": "1.0.10",
     "utctime_updated": "2019-02-14T12:55:55.000000Z",
     "package_name": "phantom_msgfileparser",
@@ -35,8 +35,12 @@
     },
     "actions": [
         {
-            "read_only": false,
+            "action": "extract email",
+            "identifier": "extract_email",
+            "type": "generic",
             "description": "Extract email data from Outlook MSG files",
+            "verbose": "This action requires the input vault file to be an Outlook MSG file",
+            "read_only": false,
             "parameters": {
                 "artifact_name": {
                     "description": "Name of artifact, default (Email Artifact)",
@@ -78,11 +82,6 @@
                     "order": 2
                 }
             },
-            "versions": "EQ(*)",
-            "render": {
-                "type": "table"
-            },
-            "action": "extract email",
             "output": [
                 {
                     "column_order": 4,
@@ -178,9 +177,10 @@
                     "data_type": "numeric"
                 }
             ],
-            "identifier": "extract_email",
-            "type": "generic",
-            "verbose": "This action requires the input vault file to be an Outlook MSG file"
+            "render": {
+                "type": "table"
+            },
+            "versions": "EQ(*)"
         }
     ]
 }
