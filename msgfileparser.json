@@ -57,7 +57,7 @@
                     "contains": [
                         "phantom container id"
                     ],
-                    "primary": false,
+                    "primary": true,
                     "order": 1
                 },
                 "vault_id": {
@@ -73,12 +73,12 @@
                 },
                 "label": {
                     "required": false,
-                    "description": "Add Container to this Label",
+                    "description": "Add Container to this label",
                     "data_type": "string",
                     "contains": [
                         "phantom container label"
                     ],
-                    "primary": false,
+                    "primary": true,
                     "order": 2
                 }
             },
