@@ -8,7 +8,7 @@
     "logo_dark": "logo_msgfileparser_dark.svg",
     "product_name": "MSG File Parser",
     "product_version_regex": ".*",
-    "publisher": "Phantom",
+    "publisher": "Splunk",
     "license": "Copyright (c) 2019 Splunk Inc.",
     "app_version": "1.0.14",
     "utctime_updated": "2019-04-08T22:01:48.000000Z",
