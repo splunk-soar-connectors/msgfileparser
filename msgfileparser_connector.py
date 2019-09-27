@@ -347,7 +347,7 @@ class MsgFileParserConnector(BaseConnector):
                     fd, tmp_file_path = tempfile.mkstemp(dir=Vault.get_vault_tmp_dir())
                 else:
                     fd, tmp_file_path = tempfile.mkstemp(dir='/opt/phantom/vault/tmp')
-                os.write(fd, UnicodeDammit(curr_attach.data).unicode_markup.encode('utf-8'))
+                os.write(fd, curr_attach.data)
                 os.close(fd)
             except Exception as e:
                 return RetVal(action_result.set_status(phantom.APP_ERROR,
