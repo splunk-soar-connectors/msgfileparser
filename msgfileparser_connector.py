@@ -261,6 +261,8 @@ class MsgFileParserConnector(BaseConnector):
 
         try:
             email_text = msg._getStringStream('__substg1.0_007D')
+            if not email_text:
+                return action_result.set_status(phantom.APP_ERROR, "Unable to fetch email headers from message")
             mail = email.message_from_string(email_text)
         except Exception as e:
             return action_result.set_status(phantom.APP_ERROR,
