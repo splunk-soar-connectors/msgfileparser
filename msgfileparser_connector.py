@@ -8,18 +8,18 @@
 import phantom.app as phantom
 from phantom.base_connector import BaseConnector
 from phantom.action_result import ActionResult
+from phantom.vault import Vault
 
 import requests
 import json
-from bs4 import BeautifulSoup
-from bs4 import UnicodeDammit
-from ExtractMsg import Message
-from phantom.vault import Vault
 import tempfile
 import os
 import email
-from requests.structures import CaseInsensitiveDict
 import hashlib
+from bs4 import BeautifulSoup
+from bs4 import UnicodeDammit
+from extract_msg import Message
+from requests.structures import CaseInsensitiveDict
 
 
 _container_common = {
@@ -225,16 +225,17 @@ class MsgFileParserConnector(BaseConnector):
 
         return (ret_val, vault_artifact)
 
-    def _get_email_headers_from_mail(self, mail, charset=None):
+    def _get_email_headers_from_mail(self, mail, charset=None, email_headers=None):
 
-        email_headers = mail.items()
+        if mail:
+            email_headers = mail.items()
 
-        # TODO: the next 2 ifs can be condensed to use 'or'
+            # TODO: the next 2 ifs can be condensed to use 'or'
+            if (charset is None):
+                charset = mail.get_content_charset()
+
         if (charset is None):
-            charset = mail.get_content_charset()
-
-        if (charset is None):
-            charset = 'utf8'
+                charset = 'utf8'
 
         if (not email_headers):
             return {}
@@ -261,14 +262,18 @@ class MsgFileParserConnector(BaseConnector):
 
         try:
             email_text = msg._getStringStream('__substg1.0_007D')
-            if not email_text:
-                return action_result.set_status(phantom.APP_ERROR, "Unable to fetch email headers from message")
-            mail = email.message_from_string(email_text)
+            if email_text:
+                mail = email.message_from_string(email_text)
+                headers = self._get_email_headers_from_mail(mail, charset)
+            else:
+                headers_data = msg._header
+                if not headers_data:
+                    return action_result.set_status(phantom.APP_ERROR, "Unable to get email headers from message")
+                headers_dict = headers_data.__dict__
+                headers = self._get_email_headers_from_mail(None, charset, email_headers=headers_dict.get('_headers'))
         except Exception as e:
             return action_result.set_status(phantom.APP_ERROR,
                     "Unable to get email header string from message. Error: {0}".format(str(e)))
-
-        headers = self._get_email_headers_from_mail(mail, charset)
 
         if (not headers):
             return phantom.APP_ERROR
