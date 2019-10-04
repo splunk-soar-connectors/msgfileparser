@@ -235,7 +235,7 @@ class MsgFileParserConnector(BaseConnector):
                 charset = mail.get_content_charset()
 
         if (charset is None):
-                charset = 'utf8'
+            charset = 'utf8'
 
         if (not email_headers):
             return {}
