@@ -242,10 +242,10 @@ class MsgFileParserConnector(BaseConnector):
 
         # Convert the header tuple into a dictionary
         headers = CaseInsensitiveDict()
-        [headers.update({x[0]: unicode(x[1], charset)}) for x in email_headers]
+        [headers.update({x[0]: unicode(str(x[1]), charset)}) for x in email_headers]
 
         # Handle received seperately
-        received_headers = [unicode(x[1], charset) for x in email_headers if x[0].lower() == 'received']
+        received_headers = [unicode(str(x[1]), charset) for x in email_headers if x[0].lower() == 'received']
 
         if (received_headers):
             headers['Received'] = received_headers
@@ -405,7 +405,12 @@ class MsgFileParserConnector(BaseConnector):
         # we don't/can't add a raw_email to this container, .msg file does not contain the email
         # in rfc822 format
         container['source_data_identifier'] = self._create_dict_hash(container)
-        container['label'] = label
+
+        try:
+            container['label'] = label.encode('utf-8')
+        except:
+            return RetVal(action_result.set_status(phantom.APP_ERROR, "Please provide a valid label name in 'label' parameter"))
+
         container.update(_container_common)
 
         status, message, container_id = self.save_container(container)
