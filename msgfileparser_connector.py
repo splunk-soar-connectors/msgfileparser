@@ -276,7 +276,7 @@ class MsgFileParserConnector(BaseConnector):
                     "Unable to get email header string from message. Error: {0}".format(str(e)))
 
         if (not headers):
-            return phantom.APP_ERROR
+            return action_result.set_status(phantom.APP_ERROR, "Unable to fetch the headers information from the provided MSG file")
 
         # Parse email keys first
         cef_artifact = {}
@@ -295,7 +295,7 @@ class MsgFileParserConnector(BaseConnector):
         # if the header did not contain any email addresses then ignore this artifact
         message_id = headers.get('message-id')
         if ((not cef_artifact) and (message_id is None)):
-            return phantom.APP_ERROR
+            return action_result.set_status(phantom.APP_ERROR, "Unable to fetch the fromEmail, toEmail, and message ID information from the provided MSG file")
 
         cef_artifact['bodyText'] = self._extract_str(msg.body).decode('utf-8', 'replace').replace(u'\u0000', '')
 
@@ -479,7 +479,7 @@ class MsgFileParserConnector(BaseConnector):
         # now add all the artifacts
         ret_val = self._save_to_existing_container(action_result, artifacts, container_id)
         if phantom.is_fail(ret_val):
-            return ret_val
+            return action_result.get_status()
 
         # Add a dictionary that is made up of the most important values from data into the summary
         summary = action_result.update_summary({})
