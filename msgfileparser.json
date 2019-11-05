@@ -10,11 +10,11 @@
     "product_version_regex": ".*",
     "publisher": "Splunk",
     "license": "Copyright (c) 2019 Splunk Inc.",
-    "app_version": "1.0.16",
-    "utctime_updated": "2019-04-09T19:07:56.000000Z",
+    "app_version": "1.0.19",
+    "utctime_updated": "2019-11-05T22:04:36.000000Z",
     "package_name": "phantom_msgfileparser",
     "main_module": "msgfileparser_connector.pyc",
-    "min_phantom_version": "4.0.1068",
+    "min_phantom_version": "4.5.15922",
     "app_wizard_version": "1.0.0",
     "configuration": {},
     "pip_dependencies": {
@@ -24,8 +24,12 @@
                 "input_file": "wheels/olefile-0.45.1-py2.py3-none-any.whl"
             },
             {
+                "module": "tzlocal",
+                "input_file": "wheels/tzlocal-2.0.0-py2.py3-none-any.whl"
+            },
+            {
                 "module": "ExtractMsg",
-                "input_file": "wheels/ExtractMsg-0.3-py2-none-any.whl"
+                "input_file": "wheels/extract_msg-0.23.2-py2.py3-none-any.whl"
             },
             {
                 "module": "IMAPClient",
