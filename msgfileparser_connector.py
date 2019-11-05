@@ -8,18 +8,18 @@
 import phantom.app as phantom
 from phantom.base_connector import BaseConnector
 from phantom.action_result import ActionResult
+from phantom.vault import Vault
 
 import requests
 import json
-from bs4 import BeautifulSoup
-from bs4 import UnicodeDammit
-from ExtractMsg import Message
-from phantom.vault import Vault
 import tempfile
 import os
 import email
-from requests.structures import CaseInsensitiveDict
 import hashlib
+from bs4 import BeautifulSoup
+from bs4 import UnicodeDammit
+from extract_msg import Message
+from requests.structures import CaseInsensitiveDict
 
 
 _container_common = {
@@ -225,13 +225,14 @@ class MsgFileParserConnector(BaseConnector):
 
         return (ret_val, vault_artifact)
 
-    def _get_email_headers_from_mail(self, mail, charset=None):
+    def _get_email_headers_from_mail(self, mail, charset=None, email_headers=None):
 
-        email_headers = mail.items()
+        if mail:
+            email_headers = mail.items()
 
-        # TODO: the next 2 ifs can be condensed to use 'or'
-        if (charset is None):
-            charset = mail.get_content_charset()
+            # TODO: the next 2 ifs can be condensed to use 'or'
+            if (charset is None):
+                charset = mail.get_content_charset()
 
         if (charset is None):
             charset = 'utf8'
@@ -241,10 +242,10 @@ class MsgFileParserConnector(BaseConnector):
 
         # Convert the header tuple into a dictionary
         headers = CaseInsensitiveDict()
-        [headers.update({x[0]: unicode(x[1], charset)}) for x in email_headers]
+        [headers.update({x[0]: unicode(str(x[1]), charset)}) for x in email_headers]
 
         # Handle received seperately
-        received_headers = [unicode(x[1], charset) for x in email_headers if x[0].lower() == 'received']
+        received_headers = [unicode(str(x[1]), charset) for x in email_headers if x[0].lower() == 'received']
 
         if (received_headers):
             headers['Received'] = received_headers
@@ -261,17 +262,21 @@ class MsgFileParserConnector(BaseConnector):
 
         try:
             email_text = msg._getStringStream('__substg1.0_007D')
-            if not email_text:
-                return action_result.set_status(phantom.APP_ERROR, "Unable to fetch email headers from message")
-            mail = email.message_from_string(email_text)
+            if email_text:
+                mail = email.message_from_string(email_text)
+                headers = self._get_email_headers_from_mail(mail, charset)
+            else:
+                headers_data = msg._header
+                if not headers_data:
+                    return action_result.set_status(phantom.APP_ERROR, "Unable to get email headers from message")
+                headers_dict = headers_data.__dict__
+                headers = self._get_email_headers_from_mail(None, charset, email_headers=headers_dict.get('_headers'))
         except Exception as e:
             return action_result.set_status(phantom.APP_ERROR,
                     "Unable to get email header string from message. Error: {0}".format(str(e)))
 
-        headers = self._get_email_headers_from_mail(mail, charset)
-
         if (not headers):
-            return phantom.APP_ERROR
+            return action_result.set_status(phantom.APP_ERROR, "Unable to fetch the headers information from the provided MSG file")
 
         # Parse email keys first
         cef_artifact = {}
@@ -290,7 +295,7 @@ class MsgFileParserConnector(BaseConnector):
         # if the header did not contain any email addresses then ignore this artifact
         message_id = headers.get('message-id')
         if ((not cef_artifact) and (message_id is None)):
-            return phantom.APP_ERROR
+            return action_result.set_status(phantom.APP_ERROR, "Unable to fetch the fromEmail, toEmail, and message ID information from the provided MSG file")
 
         cef_artifact['bodyText'] = self._extract_str(msg.body).decode('utf-8', 'replace').replace(u'\u0000', '')
 
@@ -400,7 +405,12 @@ class MsgFileParserConnector(BaseConnector):
         # we don't/can't add a raw_email to this container, .msg file does not contain the email
         # in rfc822 format
         container['source_data_identifier'] = self._create_dict_hash(container)
-        container['label'] = label
+
+        try:
+            container['label'] = label.encode('utf-8')
+        except:
+            return RetVal(action_result.set_status(phantom.APP_ERROR, "Please provide a valid label name in 'label' parameter"))
+
         container.update(_container_common)
 
         status, message, container_id = self.save_container(container)
@@ -469,7 +479,7 @@ class MsgFileParserConnector(BaseConnector):
         # now add all the artifacts
         ret_val = self._save_to_existing_container(action_result, artifacts, container_id)
         if phantom.is_fail(ret_val):
-            return ret_val
+            return action_result.get_status()
 
         # Add a dictionary that is made up of the most important values from data into the summary
         summary = action_result.update_summary({})
