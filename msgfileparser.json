@@ -14,7 +14,7 @@
     "utctime_updated": "2019-11-05T22:44:33.000000Z",
     "package_name": "phantom_msgfileparser",
     "main_module": "msgfileparser_connector.pyc",
-    "min_phantom_version": "4.5.15922",
+    "min_phantom_version": "4.0.1068",
     "app_wizard_version": "1.0.0",
     "configuration": {},
     "pip_dependencies": {
