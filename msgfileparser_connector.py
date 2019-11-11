@@ -333,7 +333,7 @@ class MsgFileParserConnector(BaseConnector):
 
         return hashlib.md5(input_dict_str).hexdigest()
 
-    def _add_attachments_to_container(self, msg, container_id, action_result):
+    def _add_attachments_to_container(self, msg, container_id, artifact_severity, action_result):
 
         # get the attachments
 
@@ -368,6 +368,7 @@ class MsgFileParserConnector(BaseConnector):
 
             ret_val, vault_artifact = self._get_vault_artifact(vault_info, file_name, action_result)
             if (ret_val and vault_artifact):
+                vault_artifact['severity'] = artifact_severity
                 vault_artifacts.append(vault_artifact)
 
         return (phantom.APP_SUCCESS, vault_artifacts)
@@ -392,10 +393,12 @@ class MsgFileParserConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR, message)
         return phantom.APP_SUCCESS
 
-    def _create_container(self, action_result, email_artifact, label, vault_path):
+    def _create_container(self, action_result, email_artifact, label, container_severity, vault_path):
 
         # create a container
         container = dict()
+        # set container severity
+        container['severity'] = container_severity
 
         try:
             container['name'] = email_artifact['cef']['emailHeaders']['Subject']
@@ -460,18 +463,21 @@ class MsgFileParserConnector(BaseConnector):
         if (phantom.is_fail(ret_val)):
             return action_result.get_status()
 
+        # Set severity of artifacts
+        severity = param['severity']
+        email_artifact['severity'] = severity
         artifacts.append(email_artifact)
 
         # create a container if required
         if not container_id:
 
-            ret_val, container_id = self._create_container(action_result, email_artifact, label, vault_path)
+            ret_val, container_id = self._create_container(action_result, email_artifact, label, severity, vault_path)
 
             if phantom.is_fail(ret_val):
                 return action_result.get_status()
 
         # now work on the attachments
-        ret_val, vault_artifacts = self._add_attachments_to_container(msg, container_id, action_result)
+        ret_val, vault_artifacts = self._add_attachments_to_container(msg, container_id, severity, action_result)
 
         if (phantom.is_success(ret_val) and vault_artifacts):
             artifacts.extend(vault_artifacts)

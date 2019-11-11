@@ -11,10 +11,10 @@
     "publisher": "Splunk",
     "license": "Copyright (c) 2019 Splunk Inc.",
     "app_version": "1.0.19",
-    "utctime_updated": "2019-11-05T22:04:36.000000Z",
+    "utctime_updated": "2019-11-08T18:35:55.000000Z",
     "package_name": "phantom_msgfileparser",
     "main_module": "msgfileparser_connector.pyc",
-    "min_phantom_version": "4.5.15922",
+    "min_phantom_version": "4.0.1068",
     "app_wizard_version": "1.0.0",
     "configuration": {},
     "pip_dependencies": {
@@ -84,6 +84,18 @@
                     ],
                     "primary": true,
                     "order": 2
+                },
+                "severity": {
+                    "required": true,
+                    "description": "Severity of the Artifact",
+                    "data_type": "string",
+                    "value_list": [
+                        "low",
+                        "medium",
+                        "high"
+                    ],
+                    "default": "medium",
+                    "order": 3
                 }
             },
             "output": [
@@ -98,14 +110,20 @@
                 },
                 {
                     "data_path": "action_result.parameter.artifact_name",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "example_values": [
+                        "Email Artifact"
+                    ]
                 },
                 {
                     "contains": [
                         "phantom container id"
                     ],
                     "data_path": "action_result.parameter.container_id",
-                    "data_type": "numeric"
+                    "data_type": "numeric",
+                    "example_values": [
+                        193
+                    ]
                 },
                 {
                     "data_path": "action_result.parameter.label",
@@ -127,7 +145,8 @@
                         "sha1"
                     ],
                     "example_values": [
-                        "492cafe7223b63c03413a290b8b7cefdfbc9e5d2"
+                        "492cafe7223b63c03413a290b8b7cefdfbc9e5d2",
+                        "f1cba62002865cdcee8ce010abb87510c32c48ca"
                     ],
                     "column_order": 2,
                     "column_name": "vault_id"
@@ -143,7 +162,8 @@
                 {
                     "data_path": "action_result.summary.artifacts_found",
                     "example_values": [
-                        2
+                        2,
+                        8
                     ],
                     "data_type": "numeric"
                 },
@@ -154,7 +174,8 @@
                         "phantom container id"
                     ],
                     "example_values": [
-                        256
+                        256,
+                        193
                     ],
                     "column_order": 1,
                     "column_name": "container_id"
@@ -162,7 +183,8 @@
                 {
                     "data_path": "action_result.message",
                     "example_values": [
-                        "Container id: 256, Artifacts found: 2"
+                        "Container id: 256, Artifacts found: 2",
+                        "Container id: 193, Artifacts found: 8"
                     ],
                     "data_type": "string"
                 },
@@ -179,6 +201,13 @@
                         1
                     ],
                     "data_type": "numeric"
+                },
+                {
+                    "data_path": "action_result.parameter.severity",
+                    "data_type": "string",
+                    "example_values": [
+                        "low"
+                    ]
                 }
             ],
             "render": {
