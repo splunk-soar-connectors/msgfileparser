@@ -139,7 +139,8 @@
                         "phantom container label"
                     ],
                     "example_values": [
-                        "events"
+                        "events",
+                        "email"
                     ],
                     "column_order": 3,
                     "column_name": "label"
@@ -213,7 +214,16 @@
                     "data_path": "action_result.parameter.severity",
                     "data_type": "string",
                     "example_values": [
-                        "low"
+                        "low",
+                        "medium"
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.run_automation",
+                    "data_type": "boolean",
+                    "example_values": [
+                        true,
+                        false
                     ]
                 }
             ],
