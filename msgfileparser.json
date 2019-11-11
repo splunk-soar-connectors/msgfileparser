@@ -96,6 +96,13 @@
                     ],
                     "default": "medium",
                     "order": 3
+                },
+                "run_automation": {
+                    "required": false,
+                    "description": "If true, active playbooks will be triggered when artifacts are created",
+                    "data_type": "boolean",
+                    "default": true,
+                    "order": 4
                 }
             },
             "output": [

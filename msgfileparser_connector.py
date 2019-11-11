@@ -333,7 +333,7 @@ class MsgFileParserConnector(BaseConnector):
 
         return hashlib.md5(input_dict_str).hexdigest()
 
-    def _add_attachments_to_container(self, msg, container_id, artifact_severity, action_result):
+    def _add_attachments_to_container(self, msg, container_id, artifact_severity, run_auto_flag, action_result):
 
         # get the attachments
 
@@ -369,6 +369,8 @@ class MsgFileParserConnector(BaseConnector):
             ret_val, vault_artifact = self._get_vault_artifact(vault_info, file_name, action_result)
             if (ret_val and vault_artifact):
                 vault_artifact['severity'] = artifact_severity
+                if run_auto_flag is False:
+                    vault_artifact['run_automation'] = run_auto_flag
                 vault_artifacts.append(vault_artifact)
 
         return (phantom.APP_SUCCESS, vault_artifacts)
@@ -463,9 +465,13 @@ class MsgFileParserConnector(BaseConnector):
         if (phantom.is_fail(ret_val)):
             return action_result.get_status()
 
-        # Set severity of artifacts
+        # Set severity and run_automation flag of artifacts
         severity = param['severity']
+        run_auto_flag = param['run_automation']
         email_artifact['severity'] = severity
+        # Only set artifact field if it is False. Causes multiple unwanted playbooks runs when set to True
+        if run_auto_flag is False:
+            email_artifact['run_automation'] = run_auto_flag
         artifacts.append(email_artifact)
 
         # create a container if required
@@ -477,7 +483,7 @@ class MsgFileParserConnector(BaseConnector):
                 return action_result.get_status()
 
         # now work on the attachments
-        ret_val, vault_artifacts = self._add_attachments_to_container(msg, container_id, severity, action_result)
+        ret_val, vault_artifacts = self._add_attachments_to_container(msg, container_id, severity, run_auto_flag, action_result)
 
         if (phantom.is_success(ret_val) and vault_artifacts):
             artifacts.extend(vault_artifacts)
