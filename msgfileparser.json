@@ -45,6 +45,9 @@
             "description": "Extract email data from Outlook MSG files",
             "verbose": "This action requires the input vault file to be an Outlook MSG file. This action creates artifacts for the email data (from, to, cc, date, subject, body) and the email's attachment(s)",
             "read_only": false,
+            "lock": {
+                "enabled": false
+            },
             "parameters": {
                 "artifact_name": {
                     "description": "Name of artifact, default (Email Artifact)",
