@@ -43,7 +43,7 @@
             "identifier": "extract_email",
             "type": "generic",
             "description": "Extract email data from Outlook MSG files",
-            "verbose": "This action requires the input vault file to be an Outlook MSG file",
+            "verbose": "This action requires the input vault file to be an Outlook MSG file. This action creates artifacts for the email data (from, to, cc, date, subject, body) and the email's attachment(s)",
             "read_only": false,
             "parameters": {
                 "artifact_name": {
@@ -66,7 +66,7 @@
                 },
                 "vault_id": {
                     "required": true,
-                    "description": "Vault ID",
+                    "description": "Vault ID of the .msg file",
                     "data_type": "string",
                     "contains": [
                         "vault id",
@@ -77,7 +77,7 @@
                 },
                 "label": {
                     "required": false,
-                    "description": "Add Container to this label",
+                    "description": "Creates a new Container with this label to add created artifacts",
                     "data_type": "string",
                     "contains": [
                         "phantom container label"
@@ -87,7 +87,7 @@
                 },
                 "severity": {
                     "required": false,
-                    "description": "Severity of the Artifact",
+                    "description": "Severity applied to the artifact(s) extracted from the .msg file",
                     "data_type": "string",
                     "default": "medium",
                     "order": 3
