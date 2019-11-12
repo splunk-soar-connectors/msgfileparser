@@ -86,14 +86,9 @@
                     "order": 2
                 },
                 "severity": {
-                    "required": true,
+                    "required": false,
                     "description": "Severity of the Artifact",
                     "data_type": "string",
-                    "value_list": [
-                        "low",
-                        "medium",
-                        "high"
-                    ],
                     "default": "medium",
                     "order": 3
                 },
