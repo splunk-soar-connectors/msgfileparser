@@ -388,11 +388,11 @@ class MsgFileParserConnector(BaseConnector):
             artifact['container_id'] = container_id
         if artifacts:
             status, message, id_list = self.save_artifacts(artifacts)
-            message = message + '. Please validate severity parameter'
         else:
             # No IOCS found
             return action_result.set_status(phantom.APP_SUCCESS)
         if phantom.is_fail(status):
+            message = message + '. Please validate severity parameter'
             return action_result.set_status(phantom.APP_ERROR, message)
         return phantom.APP_SUCCESS
 
