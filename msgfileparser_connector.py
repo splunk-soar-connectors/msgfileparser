@@ -16,6 +16,8 @@ import tempfile
 import os
 import email
 import hashlib
+import base64
+import quopri
 from bs4 import BeautifulSoup
 from bs4 import UnicodeDammit
 from extract_msg import Message
@@ -235,7 +237,7 @@ class MsgFileParserConnector(BaseConnector):
                 charset = mail.get_content_charset()
 
         if (charset is None):
-            charset = 'utf8'
+            charset = 'utf-8'
 
         if (not email_headers):
             return {}
@@ -243,6 +245,11 @@ class MsgFileParserConnector(BaseConnector):
         # Convert the header tuple into a dictionary
         headers = CaseInsensitiveDict()
         [headers.update({x[0]: unicode(str(x[1]), charset)}) for x in email_headers]
+
+        # Decode unicode subject
+        if '?UTF-8?' in headers['Subject']:
+            chars = 'utf-8'
+            headers['Subject'] = self._decode_subject(headers['Subject'], chars)
 
         # Handle received seperately
         received_headers = [unicode(str(x[1]), charset) for x in email_headers if x[0].lower() == 'received']
@@ -257,6 +264,23 @@ class MsgFileParserConnector(BaseConnector):
                 headers['decodedSubject'] = UnicodeDammit(subject).unicode_markup.encode('utf-8')
 
         return headers
+
+    def _decode_subject(self, subject, charset):
+
+        # Decode subject unicode
+        decoded_subject = ''
+        subject = subject.split('?=\r\n\t=')
+        for str in subject:
+            if '?UTF-8?B?' in str:
+                str = str.replace('?UTF-8?B?', '').replace('?=', '')
+                str = base64.b64decode(str)
+            elif '?UTF-8?Q?' in str:
+                str = str.replace('?UTF-8?Q?', '').replace('?=', '')
+                str = quopri.decodestring(str)
+            str = str.decode(charset)
+            decoded_subject = decoded_subject + str
+
+        return decoded_subject
 
     def _create_email_artifact(self, msg, email_artifact, action_result, artifact_name, charset=None):
 
