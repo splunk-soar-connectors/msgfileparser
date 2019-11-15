@@ -388,6 +388,7 @@ class MsgFileParserConnector(BaseConnector):
             artifact['container_id'] = container_id
         if artifacts:
             status, message, id_list = self.save_artifacts(artifacts)
+            message = message + '. Please validate severity parameter'
         else:
             # No IOCS found
             return action_result.set_status(phantom.APP_SUCCESS)
@@ -426,25 +427,6 @@ class MsgFileParserConnector(BaseConnector):
 
     def _save_to_existing_container(self, action_result, artifacts, container_id):
         return self._save_artifacts(action_result, artifacts, container_id)
-
-    def _validate_custom_severity(self, action_result, severity):
-
-        try:
-            r = requests.get('{0}rest/severity'.format(self._get_phantom_base_url()), verify=False)
-            resp_json = r.json()
-        except Exception as e:
-            return RetVal(action_result.set_status(phantom.APP_ERROR, "Could not get severities from platform: {0}".format(e)))
-
-        if r.status_code != 200:
-            return RetVal(action_result.set_status(phantom.APP_ERROR, "Could not get severities from platform: {0}".format(resp_json.get('message', 'Unknown Error'))))
-
-        severities = [s['name'] for s in resp_json['data']]
-
-        if severity not in severities:
-            return RetVal(action_result.set_status(phantom.APP_ERROR,
-                            "Supplied severity, {0}, not found in configured severities: {1}".format(severity, ', '.join(severities))))
-        else:
-            return RetVal(phantom.APP_SUCCESS, {})
 
     def _handle_extract_email(self, param):
 
@@ -486,9 +468,6 @@ class MsgFileParserConnector(BaseConnector):
 
         # Set severity and run_automation flag of artifacts
         severity = param.get('severity', 'medium').lower()
-        ret_val, message = self._validate_custom_severity(action_result, severity)
-        if phantom.is_fail(ret_val):
-            return action_result.get_status()
         email_artifact['severity'] = severity
 
         # Set run_automation flag
