@@ -270,15 +270,15 @@ class MsgFileParserConnector(BaseConnector):
         # Decode subject unicode
         decoded_subject = ''
         subject = subject.split('?=\r\n\t=')
-        for str in subject:
-            if '?UTF-8?B?' in str:
-                str = str.replace('?UTF-8?B?', '').replace('?=', '')
-                str = base64.b64decode(str)
-            elif '?UTF-8?Q?' in str:
-                str = str.replace('?UTF-8?Q?', '').replace('?=', '')
-                str = quopri.decodestring(str)
-            str = str.decode(charset)
-            decoded_subject = decoded_subject + str
+        for sub in subject:
+            if '?UTF-8?B?' in sub:
+                sub = sub.replace('?UTF-8?B?', '').replace('?=', '')
+                sub = base64.b64decode(sub)
+            elif '?UTF-8?Q?' in sub:
+                sub = sub.replace('?UTF-8?Q?', '').replace('?=', '')
+                sub = quopri.decodestring(sub)
+            sub = sub.decode(charset)
+            decoded_subject = decoded_subject + sub
 
         return decoded_subject
 
