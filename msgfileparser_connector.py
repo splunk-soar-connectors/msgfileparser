@@ -184,16 +184,29 @@ class MsgFileParserConnector(BaseConnector):
 
     def _add_vault_hashes_to_dictionary(self, cef_artifact, vault_id, action_result):
 
-        vault_info = Vault.get_file_info(vault_id=vault_id)
+        try:
+            url = '{0}rest/container_attachment'.format(self._get_phantom_base_url())
+            query_params = {
+                    '_filter_vault_document__hash': '"{}"'.format(vault_id),
+                    'page_size': 1,
+                    'pretty': ''
+            }
+            r = requests.get(url, params=query_params, verify=False)
+            resp_data = r.json()
+            vault_info = resp_data['data'][0]
+            for k in vault_info.keys():
+                if k.startswith('_pretty_'):
+                    name = k[8:]
+                    vault_info[name] = vault_info.pop(k)
+        except Exception as e:
+            return action_result.set_status(phantom.APP_ERROR, "Failed to get vault info of extracted file", e)
 
         if (not vault_info):
             return (phantom.APP_ERROR, "Vault ID not found")
 
-        # The return value is a list, each item represents an item in the vault
-        # matching the vault id, the info that we are looking for (the hashes)
-        # will be the same for every entry, so just access the first one
+        # /rest/container_attachment (with pretty) returns metadata about the file including multiple common hash formats
         try:
-            metadata = vault_info[0].get('metadata')
+            metadata = vault_info.get('metadata')
         except:
             return action_result.set_status(phantom.APP_ERROR, "Failed to get vault item metadata")
 
@@ -463,10 +476,23 @@ class MsgFileParserConnector(BaseConnector):
 
         # get the .msg file from the vault
         vault_id = param['vault_id']
-        try:
-            vault_path = Vault.get_file_info(vault_id=vault_id)[0]['path']
+        try:            
+            url = '{0}rest/container_attachment'.format(self._get_phantom_base_url())
+            query_params = {
+                    '_filter_vault_document__hash': '"{}"'.format(vault_id),
+                    'page_size': 1,
+                    'pretty': ''
+            }
+            r = requests.get(url, params=query_params, verify=False)
+            resp_data = r.json()
+            vault_info = resp_data['data'][0]
+            for k in vault_info.keys():
+                if k.startswith('_pretty_'):
+                    name = k[8:]
+                    vault_info[name] = vault_info.pop(k)
+            vault_path = vault_info['path']
         except Exception as e:
-            return action_result.set_status(phantom.APP_ERROR, "Unable to get vault info")
+            return action_result.set_status(phantom.APP_ERROR, "Failed to get vault info before extracting", e)
 
         try:
             msg = Message(vault_path)
