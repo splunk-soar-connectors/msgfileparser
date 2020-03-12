@@ -1,5 +1,5 @@
 # File: msgfileparser_connector.py
-# Copyright (c) 2019 Splunk Inc.
+# Copyright (c) 2019-2020 Splunk Inc.
 #
 # SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
 # without a valid written license from Splunk Inc. is PROHIBITED.
@@ -196,7 +196,7 @@ class MsgFileParserConnector(BaseConnector):
             r = requests.get(url, params=query_params, verify=False)
             resp_data = r.json()
             vault_info = resp_data['data'][0]
-            for k in vault_info.keys():
+            for k in list(vault_info.keys()):
                 if k.startswith('_pretty_'):
                     name = k[8:]
                     vault_info[name] = vault_info.pop(k)
@@ -243,7 +243,7 @@ class MsgFileParserConnector(BaseConnector):
     def _get_email_headers_from_mail(self, mail, charset=None, email_headers=None):
 
         if mail:
-            email_headers = mail.items()
+            email_headers = list(mail.items())
 
             # TODO: the next 2 ifs can be condensed to use 'or'
             if (charset is None):
@@ -265,7 +265,7 @@ class MsgFileParserConnector(BaseConnector):
             headers['Subject'] = self._decode_subject(headers['Subject'], chars)
 
         # Handle received seperately
-        received_headers = [unicode(str(x[1]), charset) for x in email_headers if x[0].lower() == 'received']
+        received_headers = [str(str(x[1]), charset) for x in email_headers if x[0].lower() == 'received']
 
         if (received_headers):
             headers['Received'] = received_headers
@@ -273,7 +273,7 @@ class MsgFileParserConnector(BaseConnector):
         # handle the subject string, if required add a new key
         subject = headers.get('Subject')
         if (subject):
-            if (type(subject) == unicode):
+            if (type(subject) == str):
                 headers['decodedSubject'] = UnicodeDammit(subject).unicode_markup.encode('utf-8')
 
         return headers
@@ -334,12 +334,12 @@ class MsgFileParserConnector(BaseConnector):
         if ((not cef_artifact) and (message_id is None)):
             return action_result.set_status(phantom.APP_ERROR, "Unable to fetch the fromEmail, toEmail, and message ID information from the provided MSG file")
 
-        cef_artifact['bodyText'] = self._extract_str(msg.body).decode('utf-8', 'replace').replace(u'\u0000', '')
+        cef_artifact['bodyText'] = self._extract_str(msg.body).decode('utf-8', 'replace').replace('\u0000', '')
 
         try:
             body_html = msg._getStringStream('__substg1.0_1013')
             if (body_html):
-                cef_artifact['bodyHtml'] = body_html.decode('utf-8', 'replace').replace(u'\u0000', '')
+                cef_artifact['bodyHtml'] = body_html.decode('utf-8', 'replace').replace('\u0000', '')
         except:
             pass
 
@@ -482,7 +482,7 @@ class MsgFileParserConnector(BaseConnector):
 
         # get the .msg file from the vault
         vault_id = param['vault_id']
-        try:            
+        try:
             url = '{0}rest/container_attachment'.format(self._get_phantom_base_url())
             query_params = {
                     '_filter_vault_document__hash': '"{}"'.format(vault_id),
@@ -492,7 +492,7 @@ class MsgFileParserConnector(BaseConnector):
             r = requests.get(url, params=query_params, verify=False)
             resp_data = r.json()
             vault_info = resp_data['data'][0]
-            for k in vault_info.keys():
+            for k in list(vault_info.keys()):
                 if k.startswith('_pretty_'):
                     name = k[8:]
                     vault_info[name] = vault_info.pop(k)
