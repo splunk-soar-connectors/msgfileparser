@@ -257,7 +257,10 @@ class MsgFileParserConnector(BaseConnector):
 
         # Convert the header tuple into a dictionary
         headers = CaseInsensitiveDict()
-        [headers.update({x[0]: unicode(str(x[1]), charset)}) for x in email_headers]
+        try:
+            [headers.update({x[0]: unicode(str(x[1]), charset)}) for x in email_headers]
+        except:
+            [headers.update({x[0]: (str(x[1]), charset)}) for x in email_headers]
 
         # Decode unicode subject
         if '?UTF-8?' in headers['Subject']:
@@ -265,7 +268,7 @@ class MsgFileParserConnector(BaseConnector):
             headers['Subject'] = self._decode_subject(headers['Subject'], chars)
 
         # Handle received seperately
-        received_headers = [str(str(x[1]), charset) for x in email_headers if x[0].lower() == 'received']
+        received_headers = [(str(x[1]), charset) for x in email_headers if x[0].lower() == 'received']
 
         if (received_headers):
             headers['Received'] = received_headers
