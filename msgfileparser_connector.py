@@ -260,7 +260,7 @@ class MsgFileParserConnector(BaseConnector):
         try:
             [headers.update({x[0]: unicode(str(x[1]), charset)}) for x in email_headers]
         except:
-            [headers.update({x[0]: (str(x[1]), charset)}) for x in email_headers]
+            [headers.update({x[0]: (str(x[1]))}) for x in email_headers]
 
         # Decode unicode subject
         if '?UTF-8?' in headers['Subject']:
@@ -271,7 +271,7 @@ class MsgFileParserConnector(BaseConnector):
         try:
             received_headers = [unicode(str(x[1]), charset) for x in email_headers if x[0].lower() == 'received']
         except:
-            received_headers = [(str(x[1]), charset) for x in email_headers if x[0].lower() == 'received']
+            received_headers = [(str(x[1])) for x in email_headers if x[0].lower() == 'received']
 
         if (received_headers):
             headers['Received'] = received_headers
@@ -282,10 +282,8 @@ class MsgFileParserConnector(BaseConnector):
             try:
                 if (type(subject) == unicode):
                     headers['decodedSubject'] = UnicodeDammit(subject).unicode_markup.encode('utf-8')
-                    if hasattr(headers['decodedSubject'], 'decode'):
-                        headers['decodedSubject'] = headers['decodedSubject'].decode('utf-8')
             except:
-                if (type(subject) == unicode):
+                if (type(subject) == str):
                     headers['decodedSubject'] = UnicodeDammit(subject).unicode_markup.encode('utf-8')
                     if hasattr(headers['decodedSubject'], 'decode'):
                         headers['decodedSubject'] = headers['decodedSubject'].decode('utf-8')
@@ -348,12 +346,18 @@ class MsgFileParserConnector(BaseConnector):
         if ((not cef_artifact) and (message_id is None)):
             return action_result.set_status(phantom.APP_ERROR, "Unable to fetch the fromEmail, toEmail, and message ID information from the provided MSG file")
 
-        cef_artifact['bodyText'] = self._extract_str(msg.body).decode('utf-8', 'replace').replace(u'\u0000', '')
+        try:
+            cef_artifact['bodyText'] = self._extract_str(msg.body).decode('utf-8', 'replace').replace(u'\u0000', '')
+        except:
+            cef_artifact['bodyText'] = self._extract_str(msg.body).replace('\u0000', '')
 
         try:
             body_html = msg._getStringStream('__substg1.0_1013')
             if (body_html):
-                cef_artifact['bodyHtml'] = body_html.decode('utf-8', 'replace').replace('\u0000', '')
+                try:
+                    cef_artifact['bodyHtml'] = body_html.decode('utf-8', 'replace').replace('\u0000', '')
+                except:
+                    cef_artifact['bodyHtml'] = body_html.replace('\u0000', '')
         except:
             pass
 
