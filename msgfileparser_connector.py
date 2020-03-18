@@ -196,7 +196,7 @@ class MsgFileParserConnector(BaseConnector):
             r = requests.get(url, params=query_params, verify=False)
             resp_data = r.json()
             vault_info = resp_data['data'][0]
-            for k in list(vault_info.keys()):
+            for k in vault_info.keys():
                 if k.startswith('_pretty_'):
                     name = k[8:]
                     vault_info[name] = vault_info.pop(k)
@@ -515,7 +515,7 @@ class MsgFileParserConnector(BaseConnector):
             r = requests.get(url, params=query_params, verify=False)
             resp_data = r.json()
             vault_info = resp_data['data'][0]
-            for k in list(vault_info.keys()):
+            for k in vault_info.keys():
                 if k.startswith('_pretty_'):
                     name = k[8:]
                     vault_info[name] = vault_info.pop(k)
