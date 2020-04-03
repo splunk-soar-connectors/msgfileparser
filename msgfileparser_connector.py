@@ -20,7 +20,7 @@ import base64
 import quopri
 from bs4 import BeautifulSoup
 from bs4 import UnicodeDammit
-from extract_msg import Message
+from ExtractMsg import Message
 from requests.structures import CaseInsensitiveDict
 
 
@@ -482,7 +482,7 @@ class MsgFileParserConnector(BaseConnector):
 
         # get the .msg file from the vault
         vault_id = param['vault_id']
-        try:            
+        try:
             url = '{0}rest/container_attachment'.format(self._get_phantom_base_url())
             query_params = {
                     '_filter_vault_document__hash': '"{}"'.format(vault_id),

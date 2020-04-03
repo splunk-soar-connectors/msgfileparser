@@ -10,7 +10,7 @@
     "product_version_regex": ".*",
     "publisher": "Splunk",
     "license": "Copyright (c) 2019-2020 Splunk Inc.",
-    "app_version": "1.0.25",
+    "app_version": "TBD",
     "utctime_updated": "2019-11-19T20:21:31.000000Z",
     "package_name": "phantom_msgfileparser",
     "main_module": "msgfileparser_connector.pyc",
@@ -29,7 +29,7 @@
             },
             {
                 "module": "ExtractMsg",
-                "input_file": "wheels/extract_msg-0.23.2-py2.py3-none-any.whl"
+                "input_file": "extract_msg/ExtractMsg-0.3-py2-none-any.whl"
             },
             {
                 "module": "IMAPClient",
