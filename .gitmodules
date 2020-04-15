@@ -2,3 +2,4 @@
 	path = wheels
 	url = git@cd.splunkdev.com:phantom-external/msgfileparser_deps.git
 	ignore = dirty
+	branch = credit-suisse
