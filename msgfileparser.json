@@ -29,7 +29,7 @@
             },
             {
                 "module": "ExtractMsg",
-                "input_file": "extract_msg/ExtractMsg-0.3-py2-none-any.whl"
+                "input_file": "wheels/ExtractMsg-0.3-py2-none-any.whl"
             },
             {
                 "module": "IMAPClient",
