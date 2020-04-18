@@ -18,6 +18,7 @@ import email
 import hashlib
 import base64
 import quopri
+import re
 from bs4 import BeautifulSoup
 from bs4 import UnicodeDammit
 from ExtractMsg import Message
@@ -260,9 +261,11 @@ class MsgFileParserConnector(BaseConnector):
         [headers.update({x[0]: unicode(str(x[1]), charset)}) for x in email_headers]
 
         # Decode unicode subject
-        if '?UTF-8?' in headers['Subject']:
-            chars = 'utf-8'
-            headers['Subject'] = self._decode_subject(headers['Subject'], chars)
+        utf_regex = re.compile(r'\?utf-8\?')
+        for key, hdr in headers.items():
+            if utf_regex.search(hdr.lower()):
+                chars = 'utf-8'
+                headers[key] = self._decode_header(hdr, chars)
 
         # Handle received seperately
         received_headers = [unicode(str(x[1]), charset) for x in email_headers if x[0].lower() == 'received']
@@ -278,22 +281,22 @@ class MsgFileParserConnector(BaseConnector):
 
         return headers
 
-    def _decode_subject(self, subject, charset):
+    def _decode_header(self, header, charset):
 
-        # Decode subject unicode
-        decoded_subject = ''
-        subject = subject.split('?=\r\n\t=')
-        for sub in subject:
-            if '?UTF-8?B?' in sub:
-                sub = sub.replace('?UTF-8?B?', '').replace('?=', '')
-                sub = base64.b64decode(sub)
-            elif '?UTF-8?Q?' in sub:
-                sub = sub.replace('?UTF-8?Q?', '').replace('?=', '')
-                sub = quopri.decodestring(sub)
-            sub = sub.decode(charset)
-            decoded_subject = decoded_subject + sub
+        # Decode header unicode
+        decoded_header = ''
+        header = header.split('?=\r\n\t=')
+        for hdr in header:
+            if '?utf-8?b?' in hdr.lower():
+                hdr = hdr.replace('?UTF-8?B?', '').replace('?utf-8?B?', '').replace('?=', '')
+                hdr = base64.b64decode(hdr)
+            elif '?utf-8?q?' in hdr.lower():
+                hdr = hdr.replace('?UTF-8?Q?', '').replace('?utf-8?q?', '').replace('?=', '')
+                hdr = quopri.decodestring(hdr)
+            hdr = hdr.decode(charset)
+            decoded_header = decoded_header + hdr
 
-        return decoded_subject
+        return decoded_header
 
     def _create_email_artifact(self, msg, email_artifact, action_result, artifact_name, charset=None):
 
