@@ -287,13 +287,13 @@ class MsgFileParserConnector(BaseConnector):
         hdr = hdr.encode(charset)
         hdr = hdr.replace('"', '').replace(' ', '')
         decoded_header = ''
-        encoded_word_regex = r'=\?((?:\w|-)+)\?(Q|B)\?(.+)\?='
         try:
-            charset, encoding, encoded_text = re.match(encoded_word_regex, hdr).groups()
-            if encoding == 'B':
-                hdr = base64.b64decode(encoded_text)
-            elif encoding == 'Q':
-                hdr = quopri.decodestring(encoded_text)
+            if '?utf-8?b?' in hdr.lower():
+                hdr = hdr.replace('?UTF-8?B?', '').replace('?utf-8?B?', '').replace('?=', '')
+                hdr = base64.b64decode(hdr)
+            elif '?utf-8?q?' in hdr.lower():
+                hdr = hdr.replace('?UTF-8?Q?', '').replace('?utf-8?Q?', '').replace('?=', '')
+                hdr = quopri.decodestring(hdr)
             hdr = hdr.decode(charset, "ignore")
             decoded_header = decoded_header + hdr
             return decoded_header
