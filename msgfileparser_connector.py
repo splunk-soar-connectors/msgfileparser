@@ -248,9 +248,9 @@ class MsgFileParserConnector(BaseConnector):
 
             # TODO: the next 2 ifs can be condensed to use 'or'
             if (charset is None):
-                charset = mail.get_content_charset()
+                charset = mail.get_content_charset().strip() if mail.get_content_charset() else None
 
-        if (charset is None):
+        if (not charset):
             charset = 'utf-8'
 
         if (not email_headers):
@@ -307,6 +307,26 @@ class MsgFileParserConnector(BaseConnector):
             email_text = msg._getStringStream('__substg1.0_007D')
             if email_text:
                 mail = email.message_from_string(email_text)
+
+                # When '_headers' = [] (empty-list), bool(mail) returns False
+                if not mail:
+                    self.debug_print("Trying to fetch the headers information by an alternative approach of extraction of additional headers prefix data")
+                    first_col_ind = email_text.find(":")
+                    first_lf_ind = email_text.find("\n")
+                    # Check if there is additional prefix before original headers string, if yes,
+                    # extract that additional string in an additional prefix called "Header-Prefix" and
+                    # extract the remaining email text for parsing the other headers information
+                    if first_col_ind != -1 and '\n' in email_text[:first_col_ind]:
+                        self.debug_print("Trying to fetch the headers information by extraction of additional headers prefix data")
+                        prefix_header = "Header-Prefix: {}".format(email_text[:first_lf_ind + 1])
+                        email_text = "{}{}".format(prefix_header, email_text[first_lf_ind + 1: ])
+                        mail = email.message_from_string(email_text)
+                    else:
+                        try:
+                            self.debug_print("Unable to fetch the additional header prefix and other headers details from the email text")
+                            self.debug_print("Email-text: {}".format(UnicodeDammit(email_text).unicode_markup.encode('utf-8')))
+                        except:
+                            self.debug_print("Error occurred while logging the email text in _create_email_artifact")
                 headers = self._get_email_headers_from_mail(mail, charset)
             else:
                 headers_data = msg._header

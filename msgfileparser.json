@@ -43,7 +43,7 @@
             "identifier": "extract_email",
             "type": "generic",
             "description": "Extract email data from Outlook MSG files",
-            "verbose": "This action requires the input vault file to be an Outlook MSG file. This action creates artifacts for the email data (from, to, cc, date, subject, body) and the email's attachment(s)",
+            "verbose": "This action requires the input vault file to be an Outlook MSG file. This action creates artifacts for the email data (from, to, cc, date, subject, body) and the email's attachment(s).<br>NOTE - For the specific MSG files which are having an additional text by default at the beginning of their headers data of the email, this action adds that text into an additional header called 'Header-Prefix' to prevent data loss.",
             "read_only": false,
             "lock": {
                 "enabled": false
