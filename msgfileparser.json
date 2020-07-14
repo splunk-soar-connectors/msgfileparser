@@ -10,7 +10,7 @@
     "product_version_regex": ".*",
     "publisher": "Splunk",
     "license": "Copyright (c) 2019-2020 Splunk Inc.",
-    "app_version": "1.0.25-CS",
+    "app_version": "1.0.26-CS",
     "utctime_updated": "2019-11-19T20:21:31.000000Z",
     "package_name": "phantom_msgfileparser",
     "main_module": "msgfileparser_connector.pyc",
