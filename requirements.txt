@@ -1,0 +1,4 @@
+olefile==0.45.1
+tzlocal==2.0.0
+ExtractMsg==0.23.2
+IMAPClient==2.0.0
