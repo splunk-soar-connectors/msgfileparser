@@ -4,17 +4,21 @@
     "description": "This app parses an outlook .msg file and extracts IOCs into Container and Artifacts",
     "type": "email",
     "product_vendor": "Phantom",
-    "logo": "logo_msgfileparser.svg",
-    "logo_dark": "logo_msgfileparser_dark.svg",
+    "logo": "logo_splunk.svg",
+    "logo_dark": "logo_splunk_dark.svg",
     "product_name": "MSG File Parser",
     "product_version_regex": ".*",
     "publisher": "Splunk",
-    "license": "Copyright (c) 2019-2020 Splunk Inc.",
-    "app_version": "1.0.26-CS",
+    "license": "Copyright (c) 2019-2021 Splunk Inc.",
+    "app_version": "2.0.0-CS",
     "utctime_updated": "2019-11-19T20:21:31.000000Z",
     "package_name": "phantom_msgfileparser",
-    "main_module": "msgfileparser_connector.pyc",
-    "min_phantom_version": "4.0.1068",
+    "main_module": "msgfileparser_connector.py",
+    "min_phantom_version": "4.9.39220",
+    "python_version": "3",
+    "latest_tested_versions": [
+        "Module ExtractMsg-0.3-py2-none-any.whl"
+    ],
     "app_wizard_version": "1.0.0",
     "configuration": {},
     "pip_dependencies": {
@@ -54,11 +58,9 @@
                     "data_type": "string",
                     "default": "Email Artifact",
                     "required": true,
-                    "primary": false,
                     "order": 3
                 },
                 "container_id": {
-                    "required": false,
                     "description": "Add created artifacts to this container",
                     "data_type": "numeric",
                     "contains": [
@@ -79,7 +81,6 @@
                     "order": 0
                 },
                 "label": {
-                    "required": false,
                     "description": "Creates a new Container with this label to add created artifacts",
                     "data_type": "string",
                     "contains": [
@@ -89,14 +90,12 @@
                     "order": 2
                 },
                 "severity": {
-                    "required": false,
                     "description": "Severity applied to the artifact(s) extracted from the .msg file",
                     "data_type": "string",
                     "default": "medium",
                     "order": 3
                 },
                 "run_automation": {
-                    "required": false,
                     "description": "If true, active playbooks will be triggered when artifacts are created",
                     "data_type": "boolean",
                     "default": true,
@@ -108,10 +107,11 @@
                     "column_order": 4,
                     "data_path": "action_result.status",
                     "example_values": [
-                        "success"
+                        "success",
+                        "failed"
                     ],
                     "data_type": "string",
-                    "column_name": "status"
+                    "column_name": "Status"
                 },
                 {
                     "data_path": "action_result.parameter.artifact_name",
@@ -141,7 +141,23 @@
                         "email"
                     ],
                     "column_order": 3,
-                    "column_name": "label"
+                    "column_name": "Label"
+                },
+                {
+                    "data_path": "action_result.parameter.run_automation",
+                    "data_type": "boolean",
+                    "example_values": [
+                        true,
+                        false
+                    ]
+                },
+                {
+                    "data_path": "action_result.parameter.severity",
+                    "data_type": "string",
+                    "example_values": [
+                        "low",
+                        "medium"
+                    ]
                 },
                 {
                     "data_path": "action_result.parameter.vault_id",
@@ -155,14 +171,10 @@
                         "f1cba62002865cdcee8ce010abb87510c32c48ca"
                     ],
                     "column_order": 2,
-                    "column_name": "vault_id"
+                    "column_name": "Vault ID"
                 },
                 {
                     "data_path": "action_result.data",
-                    "data_type": "string"
-                },
-                {
-                    "data_path": "action_result.summary",
                     "data_type": "string"
                 },
                 {
@@ -184,7 +196,7 @@
                         193
                     ],
                     "column_order": 1,
-                    "column_name": "container_id"
+                    "column_name": "Container ID"
                 },
                 {
                     "data_path": "action_result.message",
@@ -207,22 +219,6 @@
                         1
                     ],
                     "data_type": "numeric"
-                },
-                {
-                    "data_path": "action_result.parameter.severity",
-                    "data_type": "string",
-                    "example_values": [
-                        "low",
-                        "medium"
-                    ]
-                },
-                {
-                    "data_path": "action_result.parameter.run_automation",
-                    "data_type": "boolean",
-                    "example_values": [
-                        true,
-                        false
-                    ]
                 }
             ],
             "render": {
