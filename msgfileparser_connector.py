@@ -430,9 +430,9 @@ class MsgFileParserConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR, "Unable to fetch the fromEmail, toEmail, and message ID information from the provided MSG file")
 
         try:
-            cef_artifact['bodyText'] = msg.body.decode('utf-8', 'replace').replace(u'\u0000', '')
+            cef_artifact['bodyText'] = self._extract_str(msg.body).decode('utf-8', 'replace').replace(u'\u0000', '')
         except:
-            cef_artifact['bodyText'] = msg.body.replace(u'\u0000', '')
+            cef_artifact['bodyText'] = self._extract_str(msg.body).replace(u'\u0000', '')
 
         try:
             body_html = msg._getStringStream('__substg1.0_1013')
@@ -516,6 +516,16 @@ class MsgFileParserConnector(BaseConnector):
                 vault_artifacts.append(vault_artifact)
 
         return (phantom.APP_SUCCESS, vault_artifacts)
+
+    def _extract_str(self, string):
+
+        if (not string):
+            return ''
+        string = UnicodeDammit(string).unicode_markup.encode('utf-8')
+        if hasattr(string, 'decode'):
+            string = string.decode('utf-8')
+
+        return string
 
     def _save_artifacts(self, action_result, artifacts, container_id):
 
