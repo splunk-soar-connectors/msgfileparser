@@ -9,35 +9,31 @@
     "product_name": "MSG File Parser",
     "product_version_regex": ".*",
     "publisher": "Splunk",
-    "license": "Copyright (c) 2019-2020 Splunk Inc.",
-    "app_version": "2.0.14",
+    "license": "Copyright (c) 2019-2021 Splunk Inc.",
+    "app_version": "2.1.0",
     "utctime_updated": "2020-11-23T08:12:44.000000Z",
     "package_name": "phantom_msgfileparser",
     "main_module": "msgfileparser_connector.py",
-    "min_phantom_version": "4.6.19142",
+    "min_phantom_version": "4.9.39220",
     "python_version": "3",
     "latest_tested_versions": [
-        "Module extract_msg-0.23.2-py2.py3-none-any.whl, March 13 2020"
+        "Module outlookmsgfile, April 26 2021"
     ],
     "app_wizard_version": "1.0.0",
     "configuration": {},
     "pip_dependencies": {
         "wheel": [
             {
-                "module": "olefile",
-                "input_file": "wheels/olefile-0.45.1-py2.py3-none-any.whl"
+                "module": "outlookmsgfile",
+                "input_file": "wheels/convert_outlook_msg_file-0.1.0-py2.py3-none-any.whl"
             },
             {
-                "module": "tzlocal",
-                "input_file": "wheels/tzlocal-2.0.0-py2.py3-none-any.whl"
+                "module": "compoundfiles",
+                "input_file": "wheels/compoundfiles-0.3-py2.py3-none-any.whl"
             },
             {
-                "module": "ExtractMsg",
-                "input_file": "wheels/extract_msg-0.23.2-py2.py3-none-any.whl"
-            },
-            {
-                "module": "IMAPClient",
-                "input_file": "wheels/IMAPClient-2.0.0-py2.py3-none-any.whl"
+                "module": "compressed_rtf",
+                "input_file": "wheels/compressed_rtf-1.0.6-py2.py3-none-any.whl"
             }
         ]
     },
@@ -47,7 +43,7 @@
             "identifier": "extract_email",
             "type": "generic",
             "description": "Extract email data from Outlook MSG files",
-            "verbose": "This action requires the input vault file to be an Outlook MSG file. This action creates artifacts for the email data (from, to, cc, date, subject, body) and the email's attachment(s)",
+            "verbose": "This action requires the input vault file to be an Outlook MSG file. This action creates artifacts for the email data (from, to, cc, date, subject, body) and the email's attachment(s).",
             "read_only": false,
             "lock": {
                 "enabled": false
@@ -58,11 +54,9 @@
                     "data_type": "string",
                     "default": "Email Artifact",
                     "required": true,
-                    "primary": false,
                     "order": 3
                 },
                 "container_id": {
-                    "required": false,
                     "description": "Add created artifacts to this container",
                     "data_type": "numeric",
                     "contains": [
@@ -83,7 +77,6 @@
                     "order": 0
                 },
                 "label": {
-                    "required": false,
                     "description": "Creates a new Container with this label to add created artifacts",
                     "data_type": "string",
                     "contains": [
@@ -93,14 +86,12 @@
                     "order": 2
                 },
                 "severity": {
-                    "required": false,
                     "description": "Severity applied to the artifact(s) extracted from the .msg file",
                     "data_type": "string",
                     "default": "medium",
                     "order": 3
                 },
                 "run_automation": {
-                    "required": false,
                     "description": "If true, active playbooks will be triggered when artifacts are created",
                     "data_type": "boolean",
                     "default": true,
@@ -112,10 +103,11 @@
                     "column_order": 4,
                     "data_path": "action_result.status",
                     "example_values": [
-                        "success"
+                        "success",
+                        "failed"
                     ],
                     "data_type": "string",
-                    "column_name": "status"
+                    "column_name": "Status"
                 },
                 {
                     "data_path": "action_result.parameter.artifact_name",
@@ -145,7 +137,7 @@
                         "email"
                     ],
                     "column_order": 3,
-                    "column_name": "label"
+                    "column_name": "Label"
                 },
                 {
                     "data_path": "action_result.parameter.vault_id",
@@ -159,7 +151,7 @@
                         "f1cba62002865cdcee8ce010abb87510c32c48ca"
                     ],
                     "column_order": 2,
-                    "column_name": "vault_id"
+                    "column_name": "Vault ID"
                 },
                 {
                     "data_path": "action_result.data",
@@ -188,7 +180,7 @@
                         193
                     ],
                     "column_order": 1,
-                    "column_name": "container_id"
+                    "column_name": "Container ID"
                 },
                 {
                     "data_path": "action_result.message",
