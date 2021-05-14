@@ -519,7 +519,7 @@ class MsgFileParserConnector(BaseConnector):
 
     def _extract_str(self, string):
 
-        if (not string):
+        if not string:
             return ''
         string = UnicodeDammit(string).unicode_markup.encode('utf-8')
         if hasattr(string, 'decode'):
