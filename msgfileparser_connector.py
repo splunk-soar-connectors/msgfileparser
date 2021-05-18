@@ -1,5 +1,5 @@
 # File: msgfileparser_connector.py
-# Copyright (c) 2019 Splunk Inc.
+# Copyright (c) 2019-2021 Splunk Inc.
 #
 # SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
 # without a valid written license from Splunk Inc. is PROHIBITED.
@@ -9,16 +9,23 @@ import phantom.app as phantom
 from phantom.base_connector import BaseConnector
 from phantom.action_result import ActionResult
 from phantom.vault import Vault
+import phantom.rules as ph_rules
+
+# Constants imports
+from msgfileparser_consts import *
 
 import requests
 import json
 import tempfile
 import os
-import email
 import hashlib
-from bs4 import BeautifulSoup
-from bs4 import UnicodeDammit
-from extract_msg import Message
+import base64
+import quopri
+import outlookmsgfile
+import re
+from email.header import decode_header
+from bs4 import UnicodeDammit, BeautifulSoup
+from compoundfiles import CompoundFileReader
 from requests.structures import CaseInsensitiveDict
 
 
@@ -46,156 +53,61 @@ class MsgFileParserConnector(BaseConnector):
         # modify this as you deem fit.
         self._base_url = None
 
-    def _process_empty_reponse(self, response, action_result):
+    def _validate_integer(self, action_result, parameter, key, allow_zero=False):
+        if parameter is not None:
+            try:
+                if not float(parameter).is_integer():
+                    return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_INVALID_INT_ERR.format(msg="", param=key)), None
 
-        if response.status_code == 200:
-            return RetVal(phantom.APP_SUCCESS, {})
+                parameter = int(parameter)
+            except:
+                return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_INVALID_INT_ERR.format(msg="", param=key)), None
 
-        return RetVal(action_result.set_status(phantom.APP_ERROR, "Empty response and no information in the header"), None)
+            if parameter < 0:
+                return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_INVALID_INT_ERR.format(msg="non-negative", param=key)), None
+            if not allow_zero and parameter == 0:
+                return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_INVALID_INT_ERR.format(msg="non-zero positive", param=key)), None
 
-    def _process_html_response(self, response, action_result):
+        return phantom.APP_SUCCESS, parameter
 
-        # An html response, treat it like an error
-        status_code = response.status_code
+    def _get_error_message_from_exception(self, e):
+        """ This method is used to get appropriate error message from the exception.
+        :param e: Exception object
+        :return: error message
+        """
+
+        error_code = MSGFILEPARSER_ERR_CODE_UNAVAILABLE
+        error_msg = MSGFILEPARSER_ERR_MSG_UNAVAILABLE
 
         try:
-            soup = BeautifulSoup(response.text, "html.parser")
-            error_text = soup.text
-            split_lines = error_text.split('\n')
-            split_lines = [x.strip() for x in split_lines if x.strip()]
-            error_text = '\n'.join(split_lines)
+            if e.args:
+                if len(e.args) > 1:
+                    error_code = e.args[0]
+                    error_msg = str(e)
+                elif len(e.args) == 1:
+                    error_msg = e.args[0]
         except:
-            error_text = "Cannot parse error details"
+            pass
 
-        message = "Status Code: {0}. Data from server:\n{1}\n".format(status_code,
-                error_text)
-
-        message = message.replace('{', '{{').replace('}', '}}')
-
-        return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
-
-    def _process_json_response(self, r, action_result):
-
-        # Try a json parse
-        try:
-            resp_json = r.json()
-        except Exception as e:
-            return RetVal(action_result.set_status(phantom.APP_ERROR,
-                "Unable to parse JSON response. Error: {0}".format(str(e))), None)
-
-        # Please specify the status codes here
-        if 200 <= r.status_code < 399:
-            return RetVal(phantom.APP_SUCCESS, resp_json)
-
-        # You should process the error returned in the json
-        message = "Error from server. Status Code: {0} Data from server: {1}".format(
-                r.status_code, r.text.replace('{', '{{').replace('}', '}}'))
-
-        return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
-
-    def _process_response(self, r, action_result):
-
-        # store the r_text in debug data, it will get dumped in the logs if the action fails
-        if hasattr(action_result, 'add_debug_data'):
-            action_result.add_debug_data({'r_status_code': r.status_code})
-            action_result.add_debug_data({'r_text': r.text})
-            action_result.add_debug_data({'r_headers': r.headers})
-
-        # Process each 'Content-Type' of response separately
-
-        # Process a json response
-        if 'json' in r.headers.get('Content-Type', ''):
-            return self._process_json_response(r, action_result)
-
-        # Process an HTML resonse, Do this no matter what the api talks.
-        # There is a high chance of a PROXY in between phantom and the rest of
-        # world, in case of errors, PROXY's return HTML, this function parses
-        # the error and adds it to the action_result.
-        if 'html' in r.headers.get('Content-Type', ''):
-            return self._process_html_response(r, action_result)
-
-        # it's not content-type that is to be parsed, handle an empty response
-        if not r.text:
-            return self._process_empty_reponse(r, action_result)
-
-        # everything else is actually an error at this point
-        message = "Can't process response from server. Status Code: {0} Data from server: {1}".format(
-                r.status_code, r.text.replace('{', '{{').replace('}', '}}'))
-
-        return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
-
-    def _make_rest_call(self, endpoint, action_result, headers=None, params=None, data=None, method="get"):
-
-        config = self.get_config()
-
-        resp_json = None
-
-        try:
-            request_func = getattr(requests, method)
-        except AttributeError:
-            return RetVal(action_result.set_status(phantom.APP_ERROR, "Invalid method: {0}".format(method)), resp_json)
-
-        # Create a URL to connect to
-        url = self._base_url + endpoint
-
-        try:
-            r = request_func(
-                            url,
-                            # auth=(username, password),  # basic authentication
-                            data=data,
-                            headers=headers,
-                            verify=config.get('verify_server_cert', False),
-                            params=params)
-        except Exception as e:
-            return RetVal(action_result.set_status( phantom.APP_ERROR,
-                "Error Connecting to server. Details: {0}".format(str(e))), resp_json)
-
-        return self._process_response(r, action_result)
-
-    def _handle_test_connectivity(self, param):
-
-        # Add an action result object to self (BaseConnector) to represent the action for this param
-        action_result = self.add_action_result(ActionResult(dict(param)))
-
-        # NOTE: test connectivity does _NOT_ take any parameters
-        # i.e. the param dictionary passed to this handler will be empty.
-        # Also typically it does not add any data into an action_result either.
-        # The status and progress messages are more important.
-
-        """
-        # self.save_progress("Connecting to endpoint")
-        # make rest call
-        ret_val, response = self._make_rest_call('/endpoint', action_result, params=None, headers=None)
-
-        if (phantom.is_fail(ret_val)):
-            # the call to the 3rd party device or service failed, action result should contain all the error details
-            # so just return from here
-            self.save_progress("Test Connectivity Failed.")
-            return action_result.get_status()
-
-        # Return success
-        # self.save_progress("Test Connectivity Passed")
-        # return action_result.set_status(phantom.APP_SUCCESS)
-        """
-
-        # For now return Error with a message, in case of success we don't set the message, but use the summary
-        self.save_progress("Test Connectivity Failed")
-        return action_result.set_status(phantom.APP_ERROR, "Action not yet implemented")
+        return "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
 
     def _add_vault_hashes_to_dictionary(self, cef_artifact, vault_id, action_result):
 
-        vault_info = Vault.get_file_info(vault_id=vault_id)
-
-        if (not vault_info):
-            return (phantom.APP_ERROR, "Vault ID not found")
-
-        # The return value is a list, each item represents an item in the vault
-        # matching the vault id, the info that we are looking for (the hashes)
-        # will be the same for every entry, so just access the first one
         try:
-            metadata = vault_info[0].get('metadata')
+            success, message, vault_info = ph_rules.vault_info(vault_id=vault_id)
+            vault_info = list(vault_info)[0]
+        except Exception as e:
+            error_msg = self._get_error_message_from_exception(e)
+            self.debug_print("{}. Error: {}".format(MSGFILEPARSER_VAULT_INFO_EXTRACTION_ERR, error_msg))
+            return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_VAULT_INFO_EXTRACTION_ERR)
+
+        if not vault_info:
+            return (phantom.APP_ERROR, MSGFILEPARSER_VAULT_ID_NOT_FOUND_ERR)
+
+        try:
+            metadata = vault_info['metadata']
         except:
-            return action_result.set_status(phantom.APP_ERROR, "Failed to get vault item metadata")
+            return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_VAULT_METADATA_NOT_FOUND_ERR)
 
         try:
             cef_artifact['fileHashSha256'] = metadata['sha256']
@@ -214,11 +126,11 @@ class MsgFileParserConnector(BaseConnector):
 
         return (phantom.APP_SUCCESS)
 
-    def _get_vault_artifact(self, vault_info, file_name, action_result):
+    def _get_vault_artifact(self, attachment_vault_id, file_name, action_result):
 
         vault_artifact = {'name': 'Vault Artifact'}
         cef = vault_artifact['cef'] = dict()
-        cef['vaultId'] = vault_info['vault_id']
+        cef['vaultId'] = attachment_vault_id
         cef['fileName'] = file_name
 
         ret_val = self._add_vault_hashes_to_dictionary(cef, cef['vaultId'], action_result)
@@ -228,87 +140,145 @@ class MsgFileParserConnector(BaseConnector):
     def _get_email_headers_from_mail(self, mail, charset=None, email_headers=None):
 
         if mail:
-            email_headers = mail.items()
+            email_headers = list(mail.items())
+            if not email_headers:
+                return {}
 
-            # TODO: the next 2 ifs can be condensed to use 'or'
-            if (charset is None):
-                charset = mail.get_content_charset()
-
-        if (charset is None):
-            charset = 'utf8'
-
-        if (not email_headers):
-            return {}
+        if not charset:
+            charset = mail.get_content_charset() or 'utf-8'
 
         # Convert the header tuple into a dictionary
         headers = CaseInsensitiveDict()
-        [headers.update({x[0]: unicode(str(x[1]), charset)}) for x in email_headers]
+        received_headers = []
+        for x in email_headers:
+            try:
+                headers.update({x[0]: x[1].decode(charset)})
+                if x[0].lower() == 'received':
+                    received_headers.append(x[1].decode(charset))
+            except:
+                headers.update({x[0]: str(x[1])})
+                if x[0].lower() == 'received':
+                    received_headers.append(str(x[1]))
 
-        # Handle received seperately
-        received_headers = [unicode(str(x[1]), charset) for x in email_headers if x[0].lower() == 'received']
-
-        if (received_headers):
+        if received_headers:
             headers['Received'] = received_headers
+
+        # Decode unicode subject
+        if '?UTF-8?' in headers.get('Subject', ""):
+            chars = 'utf-8'
+            headers['Subject'] = self._decode_subject(headers.get('Subject', ""), chars)
 
         # handle the subject string, if required add a new key
         subject = headers.get('Subject')
-        if (subject):
-            if (type(subject) == unicode):
-                headers['decodedSubject'] = UnicodeDammit(subject).unicode_markup.encode('utf-8')
+        if subject:
+            if isinstance(subject, str):
+                headers['decodedSubject'] = self._decode_uni_string(subject, subject)
 
         return headers
 
-    def _create_email_artifact(self, msg, email_artifact, action_result, artifact_name, charset=None):
+    def _decode_subject(self, subject, charset):
+
+        # Decode subject unicode
+        decoded_subject = ''
+        subject = subject.split('?=\r\n\t=')
+        for sub in subject:
+            if '?UTF-8?B?' in sub:
+                sub = sub.replace('?UTF-8?B?', '').replace('?=', '')
+                sub = base64.b64decode(sub)
+            elif '?UTF-8?Q?' in sub:
+                sub = sub.replace('?UTF-8?Q?', '').replace('?=', '')
+                sub = quopri.decodestring(sub)
+            sub = sub.decode(charset)
+            decoded_subject = "{}{}".format(decoded_subject, sub)
+
+        return decoded_subject
+
+    def _decode_uni_string(self, input_str, def_name):
+
+        encoded_strings = re.findall(r'=\?.*\?=', input_str, re.I)
+
+        # return input_str as is, no need to do any conversion
+        if not encoded_strings:
+            return input_str
+
+        # get the decoded strings
+        try:
+            decoded_strings = [decode_header(x)[0] for x in encoded_strings]
+            decoded_strings = [{'value': x[0], 'encoding': x[1]} for x in decoded_strings]
+        except Exception as e:
+            error_msg = self._get_error_message_from_exception(e)
+            self.debug_print("Decoding: {0}. {1}".format(encoded_strings, error_msg))
+            return def_name
+
+        new_str_list = []
+        for decoded_string in decoded_strings:
+
+            if not decoded_string:
+                # nothing to replace with
+                continue
+
+            value = decoded_string.get('value')
+            encoding = decoded_string.get('encoding')
+
+            if not encoding or not value:
+                # nothing to replace with
+                continue
+
+            try:
+                value = value.decode(encoding)
+                new_str_list.append(value)
+            except:
+                try:
+                    if encoding != 'utf-8':
+                        value = str(value, encoding)
+                except:
+                    pass
+
+                try:
+                    if value:
+                        new_str_list.append(UnicodeDammit(value).unicode_markup)
+                except:
+                    pass
+
+        if new_str_list and len(new_str_list) == len(encoded_strings):
+            self.debug_print("Creating a new string entirely from the encoded_strings and assigning into input_str")
+            input_str = ''.join(new_str_list)
+
+        return input_str
+
+    def _create_email_artifact(self, mail, email_artifact, action_result, artifact_name, charset=None):
 
         try:
-            email_text = msg._getStringStream('__substg1.0_007D')
-            if email_text:
-                mail = email.message_from_string(email_text)
-                headers = self._get_email_headers_from_mail(mail, charset)
-            else:
-                headers_data = msg._header
-                if not headers_data:
-                    return action_result.set_status(phantom.APP_ERROR, "Unable to get email headers from message")
-                headers_dict = headers_data.__dict__
-                headers = self._get_email_headers_from_mail(None, charset, email_headers=headers_dict.get('_headers'))
+            headers = self._get_email_headers_from_mail(mail)
         except Exception as e:
             return action_result.set_status(phantom.APP_ERROR,
-                    "Unable to get email header string from message. Error: {0}".format(str(e)))
+                    MSGFILEPARSER_EMAIL_HEADER_MSG_ERR.format(self._get_error_message_from_exception(e)))
 
-        if (not headers):
-            return action_result.set_status(phantom.APP_ERROR, "Unable to fetch the headers information from the provided MSG file")
+        if not headers:
+            return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_EMAIL_HEADER_FILE_ERR)
 
         # Parse email keys first
         cef_artifact = {}
         cef_types = {}
 
-        if (headers.get('From')):
+        if headers.get('From'):
             emails = headers['From']
-            if (emails):
+            if emails:
                 cef_artifact.update({'fromEmail': emails})
+                cef_types.update({'fromEmail': ['email']})
 
-        if (headers.get('To')):
+        if headers.get('To'):
             emails = headers['To']
-            if (emails):
+            if emails:
                 cef_artifact.update({'toEmail': emails})
+                cef_types.update({'toEmail': ['email']})
 
         # if the header did not contain any email addresses then ignore this artifact
         message_id = headers.get('message-id')
-        if ((not cef_artifact) and (message_id is None)):
-            return action_result.set_status(phantom.APP_ERROR, "Unable to fetch the fromEmail, toEmail, and message ID information from the provided MSG file")
+        if (not cef_artifact) and (message_id is None):
+            self.debug_print(MSGFILEPARSER_FETCH_DETAILS_FROM_FILE_ERR)
 
-        cef_artifact['bodyText'] = self._extract_str(msg.body).decode('utf-8', 'replace').replace(u'\u0000', '')
-
-        try:
-            body_html = msg._getStringStream('__substg1.0_1013')
-            if (body_html):
-                cef_artifact['bodyHtml'] = body_html.decode('utf-8', 'replace').replace(u'\u0000', '')
-        except:
-            pass
-
-        cef_types.update({'fromEmail': ['email'], 'toEmail': ['email']})
-
-        if (headers):
+        if headers:
             # convert from CaseInsensitive to normal dict, so that it is serializable
             cef_artifact['emailHeaders'] = dict(headers)
 
@@ -322,99 +292,150 @@ class MsgFileParserConnector(BaseConnector):
 
         input_dict_str = None
 
-        if (not input_dict):
+        if not input_dict:
             return None
 
         try:
             input_dict_str = json.dumps(input_dict, sort_keys=True)
         except Exception as e:
-            self.debug_print('Handled exception in _create_dict_hash', e)
+            self.debug_print('Handled exception in _create_dict_hash', self._get_error_message_from_exception(e))
             return None
 
-        return hashlib.md5(input_dict_str).hexdigest()
+        return hashlib.md5(input_dict_str.encode('utf-8')).hexdigest()
 
-    def _add_attachments_to_container(self, msg, container_id, action_result):
+    def _add_attachments_to_container(self, mail, container_id, artifact_severity, run_auto_flag, action_result, email_artifact):
 
         # get the attachments
-
         vault_artifacts = list()
+        if mail.is_multipart():
+            ret_val = None
+            for part in mail.walk():
+                if part.is_multipart():
+                    self.debug_print("Multipart skip attachment")
+                    continue
 
-        for i, curr_attach in enumerate(msg.attachments or []):
+                # Process if body
+                content_disp = part.get('Content-Disposition')
+                content_type = part.get('Content-Type')
 
-            if (not curr_attach.data):
-                continue
+                process_as_body = False
+                if content_disp is None:
+                    process_as_body = True
+                elif content_disp.lower().strip() == 'inline':
+                    if ('text/html' in content_type) or ('text/plain' in content_type):
+                        process_as_body = True
+                if process_as_body:
+                    body_payload = part.get_payload(decode=True)
+                    charset = part.get_content_charset() or 'utf-8'
+                    if hasattr(body_payload, 'decode'):
+                        body_payload = body_payload.decode(charset)
+                    if 'bodyText' not in email_artifact['cef']:
+                        email_artifact['cef']['bodyText'] = body_payload
+                    continue
 
-            # get the file name
-            file_name = (curr_attach.longFilename or curr_attach.shortFilename or 'attached_file-{0}'.format(i))
+                # Process Attachments
+                file_name = part.get_filename()
+                if not file_name:
+                    self.debug_print("Skipping Empty filename")
+                    continue
+                file_name = self._decode_uni_string(file_name, file_name)
 
-            file_name = UnicodeDammit(file_name).unicode_markup.encode('utf-8')
+                # Save attachment to temp location
+                try:
+                    if hasattr(Vault, 'get_vault_tmp_dir'):
+                        fd, tmp_file_path = tempfile.mkstemp(dir=Vault.get_vault_tmp_dir())
+                    else:
+                        fd, tmp_file_path = tempfile.mkstemp(dir='/opt/phantom/vault/tmp')
+                    os.close(fd)
 
-            try:
-                if hasattr(Vault, 'get_vault_tmp_dir'):
-                    fd, tmp_file_path = tempfile.mkstemp(dir=Vault.get_vault_tmp_dir())
-                else:
-                    fd, tmp_file_path = tempfile.mkstemp(dir='/opt/phantom/vault/tmp')
-                os.write(fd, curr_attach.data)
-                os.close(fd)
-            except Exception as e:
-                return RetVal(action_result.set_status(phantom.APP_ERROR,
-                        "Unable to write file to tmp folder for attachment number: {0}. Error: {1}".format(i, str(e))))
+                    part_payload = part.get_payload(decode=True)
+                    if not part_payload:
+                        self.debug_print("Skipping Empty payload")
+                        continue
+                    with open(tmp_file_path, 'wb') as f:
+                        f.write(part_payload)
+                except Exception as e:
+                    error_msg = self._get_error_message_from_exception(e)
+                    self.debug_print(MSGFILEPARSER_UNABLE_TO_WRITE_FILE_ERR.format(file_name, error_msg))
+                    continue
 
-            try:
-                vault_info = Vault.add_attachment(tmp_file_path, container_id=container_id, file_name=file_name)
-            except Exception as e:
-                return RetVal(action_result.set_status(phantom.APP_ERROR,
-                        "Unable to add file to the vault for attachment number: {0}. Error: {1}".format(i, str(e))))
+                # Save attachment file to the vault
+                try:
+                    success, message, attachment_vault_id = ph_rules.vault_add(
+                        container=container_id,
+                        file_location=tmp_file_path,
+                        file_name=file_name
+                    )
 
-            ret_val, vault_artifact = self._get_vault_artifact(vault_info, file_name, action_result)
-            if (ret_val and vault_artifact):
-                vault_artifacts.append(vault_artifact)
+                except Exception as e:
+                    error_msg = self._get_error_message_from_exception(e)
+                    self.debug_print(MSGFILEPARSER_UNABLE_TO_ADD_FILE_ERR.format(file_name, error_msg))
+                    continue
+
+                # Create Vault artifact
+                ret_val, vault_artifact = self._get_vault_artifact(attachment_vault_id, file_name, action_result)
+                if ret_val and vault_artifact:
+                    vault_artifact['severity'] = artifact_severity
+                    if run_auto_flag is False:
+                        vault_artifact['run_automation'] = run_auto_flag
+                    vault_artifacts.append(vault_artifact)
+        else:
+            self.debug_print('Not multipart')
+            body_payload = mail.get_payload(decode=True)
+            charset = mail.get_content_charset() or 'utf-8'
+            if hasattr(body_payload, 'decode'):
+                body_payload = body_payload.decode(charset)
+            email_artifact['cef']['bodyText'] = body_payload
 
         return (phantom.APP_SUCCESS, vault_artifacts)
 
-    def _extract_str(self, string):
-
-        if (not string):
-            return ''
-
-        return UnicodeDammit(string).unicode_markup.encode('utf-8')
+    def _sanitize_dict(self, obj):
+        if isinstance(obj, str):
+            return obj.replace('\u0000', '')
+        if isinstance(obj, list):
+            return [self._sanitize_dict(item) for item in obj]
+        if isinstance(obj, dict):
+            return {k: self._sanitize_dict(v) for k, v in obj.items()}
+        return obj
 
     def _save_artifacts(self, action_result, artifacts, container_id):
 
         for artifact in artifacts:
             artifact['container_id'] = container_id
         if artifacts:
+            artifacts = self._sanitize_dict(artifacts)
             status, message, id_list = self.save_artifacts(artifacts)
         else:
             # No IOCS found
             return action_result.set_status(phantom.APP_SUCCESS)
         if phantom.is_fail(status):
+            message = '{}. Please validate severity parameter'.format(message)
             return action_result.set_status(phantom.APP_ERROR, message)
         return phantom.APP_SUCCESS
 
-    def _create_container(self, action_result, email_artifact, label, vault_path):
+    def _create_container(self, action_result, email_artifact, label, container_severity, vault_path):
 
         # create a container
         container = dict()
+        # set container severity
+        container['severity'] = container_severity
 
         try:
             container['name'] = email_artifact['cef']['emailHeaders']['Subject']
         except:
+            pass
+        if not container.get('name'):
             container['name'] = os.path.basename(vault_path)
 
         # we don't/can't add a raw_email to this container, .msg file does not contain the email
         # in rfc822 format
         container['source_data_identifier'] = self._create_dict_hash(container)
-
-        try:
-            container['label'] = label.encode('utf-8')
-        except:
-            return RetVal(action_result.set_status(phantom.APP_ERROR, "Please provide a valid label name in 'label' parameter"))
+        container['label'] = label
 
         container.update(_container_common)
 
         status, message, container_id = self.save_container(container)
-        if (phantom.is_fail(status)):
+        if phantom.is_fail(status):
             return RetVal(action_result.set_status(status, message))
 
         return (phantom.APP_SUCCESS, container_id)
@@ -428,26 +449,39 @@ class MsgFileParserConnector(BaseConnector):
 
         # validate the container id
         container_id = param.get('container_id')
+        ret_val, container_id = self._validate_integer(action_result, container_id, 'container_id')
+        if phantom.is_fail(ret_val):
+            return action_result.get_status()
+
         label = param.get('label')
         if container_id is None and label is None:
-            return action_result.set_status(phantom.APP_ERROR, "A label must be specified if no container ID is provided")
+            return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_PROVIDE_LABEL_ERR)
         if container_id:
             # Make sure container exists first, provide a better error message than waiting for save_artifacts to fail
             ret_val, message, _ = self.get_container_info(container_id)
             if phantom.is_fail(ret_val):
-                return action_result.set_status(phantom.APP_ERROR, "Unable to find container: {}".format(message))
+                return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_CONTAINERS_NOT_FOUND_ERR.format(message))
 
         # get the .msg file from the vault
         vault_id = param['vault_id']
         try:
-            vault_path = Vault.get_file_info(vault_id=vault_id)[0]['path']
+            success, message, vault_info = ph_rules.vault_info(vault_id=vault_id)
+            vault_info = list(vault_info)[0]
+            vault_path = vault_info['path']
         except Exception as e:
-            return action_result.set_status(phantom.APP_ERROR, "Unable to get vault info")
+            error_msg = self._get_error_message_from_exception(e)
+            self.debug_print("{}. Error: {}".format(MSGFILEPARSER_VAULT_INFO_BEFORE_EXTRACTION_ERR, error_msg))
+            return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_VAULT_INFO_BEFORE_EXTRACTION_ERR)
 
         try:
-            msg = Message(vault_path)
+            mail = outlookmsgfile.load(vault_path)
+        except UnicodeDecodeError as e:
+            error_msg = self._get_error_message_from_exception(e)
+            return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_PARSER_DECODE_ERR.format(error_msg))
         except Exception as e:
-            return action_result.set_status(phantom.APP_ERROR, "Failed to parse message. Error: {0}".format(str(e)))
+            error_msg = self._get_error_message_from_exception(e)
+            self.debug_print("{} Error: {}".format(MSGFILEPARSER_PARSER_MSG_FILE_ERR, error_msg))
+            return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_PARSER_MSG_FILE_ERR)
 
         # the list of artifacts will be stored in this var
         artifacts = list()
@@ -455,26 +489,57 @@ class MsgFileParserConnector(BaseConnector):
         # create the email artifact
         email_artifact = dict()
 
-        ret_val = self._create_email_artifact(msg, email_artifact, action_result, param['artifact_name'])
+        ret_val = self._create_email_artifact(mail, email_artifact, action_result, param['artifact_name'])
 
-        if (phantom.is_fail(ret_val)):
+        if phantom.is_fail(ret_val):
             return action_result.get_status()
 
+        # Set severity and run_automation flag of artifacts
+        severity = param.get('severity', 'medium').lower()
+        email_artifact['severity'] = severity
+
+        # Set run_automation flag
+        run_auto_flag = param['run_automation']
+        # Only set run_automation if it is False. Causes multiple unwanted playbooks runs when set to True
+        if run_auto_flag is False:
+            email_artifact['run_automation'] = run_auto_flag
         artifacts.append(email_artifact)
 
         # create a container if required
         if not container_id:
 
-            ret_val, container_id = self._create_container(action_result, email_artifact, label, vault_path)
+            ret_val, container_id = self._create_container(action_result, email_artifact, label, severity, vault_path)
 
             if phantom.is_fail(ret_val):
                 return action_result.get_status()
 
         # now work on the attachments
-        ret_val, vault_artifacts = self._add_attachments_to_container(msg, container_id, action_result)
+        ret_val, vault_artifacts = self._add_attachments_to_container(mail, container_id, severity, run_auto_flag, action_result, email_artifact)
 
-        if (phantom.is_success(ret_val) and vault_artifacts):
+        if phantom.is_success(ret_val) and vault_artifacts:
             artifacts.extend(vault_artifacts)
+
+        try:
+            with CompoundFileReader(vault_path) as doc:
+                for entry in doc.root:
+                    if '__substg1.0_1013' in entry.name:
+                        streamname = entry.name
+                        try:
+                            with doc.open(doc.root[streamname]) as innerstream:
+                                value = innerstream.read()
+                                soup = BeautifulSoup(value, 'html.parser')
+                                body_html = soup.prettify()
+                                if body_html:
+                                    email_artifact['cef']['bodyHtml'] = body_html
+                                    email_artifact['cef']['bodyText'] = soup.get_text()
+                                break
+                        except Exception as e:
+                            error_msg = self._get_error_message_from_exception(e)
+                            self.debug_print("Stream missing for bodyHtml. {}.".format(error_msg))
+                            break
+        except Exception as e:
+            error_msg = self._get_error_message_from_exception(e)
+            self.debug_print("Unable to read bodyHtml from file. {}.".format(error_msg))
 
         # now add all the artifacts
         ret_val = self._save_to_existing_container(action_result, artifacts, container_id)
@@ -497,10 +562,7 @@ class MsgFileParserConnector(BaseConnector):
 
         self.debug_print("action_id", self.get_action_identifier())
 
-        if action_id == 'test_connectivity':
-            ret_val = self._handle_test_connectivity(param)
-
-        elif action_id == 'extract_email':
+        if action_id == MSGFILEPARSER_EXTRACT_EMAIL_ACTION:
             ret_val = self._handle_extract_email(param)
 
         return ret_val
@@ -554,16 +616,16 @@ if __name__ == '__main__':
     username = args.username
     password = args.password
 
-    if (username is not None and password is None):
+    if username is not None and password is None:
 
         # User specified a username but not a password, so ask
         import getpass
         password = getpass.getpass("Password: ")
 
-    if (username and password):
+    if username and password:
         try:
-            print ("Accessing the Login page")
-            r = requests.get("https://127.0.0.1/login", verify=False)
+            print("Accessing the Login page")
+            r = requests.get("{}login".format(BaseConnector._get_phantom_base_url()), verify=False)
             csrftoken = r.cookies['csrftoken']
 
             data = dict()
@@ -572,14 +634,14 @@ if __name__ == '__main__':
             data['csrfmiddlewaretoken'] = csrftoken
 
             headers = dict()
-            headers['Cookie'] = 'csrftoken=' + csrftoken
-            headers['Referer'] = 'https://127.0.0.1/login'
+            headers['Cookie'] = 'csrftoken={}'.format(csrftoken)
+            headers['Referer'] = "{}login".format(BaseConnector._get_phantom_base_url())
 
-            print ("Logging into Platform to get the session id")
-            r2 = requests.post("https://127.0.0.1/login", verify=False, data=data, headers=headers)
+            print("Logging into Platform to get the session id")
+            r2 = requests.post("{}login".format(BaseConnector._get_phantom_base_url()), verify=False, data=data, headers=headers)
             session_id = r2.cookies['sessionid']
         except Exception as e:
-            print ("Unable to get session id from the platfrom. Error: " + str(e))
+            print("Unable to get session id from the platfrom. Error: {}".format(str(e)))
             exit(1)
 
     with open(args.input_test_json) as f:
@@ -590,11 +652,11 @@ if __name__ == '__main__':
         connector = MsgFileParserConnector()
         connector.print_progress_message = True
 
-        if (session_id is not None):
+        if session_id is not None:
             in_json['user_session_token'] = session_id
             connector._set_csrf_info(csrftoken, headers['Referer'])
 
         ret_val = connector._handle_action(json.dumps(in_json), None)
-        print (json.dumps(json.loads(ret_val), indent=4))
+        print(json.dumps(json.loads(ret_val), indent=4))
 
     exit(0)
