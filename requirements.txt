@@ -1,0 +1,3 @@
+compoundfiles==0.3
+compressed_rtf==1.0.6
+outlookmsgfile==0.1.0
