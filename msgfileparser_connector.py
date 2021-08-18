@@ -9,6 +9,7 @@ import phantom.app as phantom
 from phantom.base_connector import BaseConnector
 from phantom.action_result import ActionResult
 from phantom.vault import Vault
+import phantom.rules as ph_rules
 
 import requests
 import json
@@ -19,7 +20,6 @@ import hashlib
 import base64
 import quopri
 import re
-import sys
 from bs4 import BeautifulSoup, UnicodeDammit
 from ExtractMsg import Message
 from requests.structures import CaseInsensitiveDict
@@ -50,22 +50,6 @@ class MsgFileParserConnector(BaseConnector):
         # modify this as you deem fit.
         self._base_url = None
 
-    def _handle_py_ver_compat_for_input_str(self, input_str, always_encode=False):
-        """
-        This method returns the encoded|original string based on the Python version.
-        :param input_str: Input string to be processed
-        :param always_encode: Used if the string needs to be encoded for python 3
-        :return: input_str (Processed input string based on following logic 'input_str - Python 3; encoded input_str - Python 2')
-        """
-
-        try:
-            if input_str and (self._python_version == 2 or always_encode):
-                input_str = UnicodeDammit(input_str).unicode_markup.encode('utf-8')
-        except:
-            self.debug_print("Error occurred while handling python 2to3 compatibility for the input string")
-
-        return input_str
-
     def _get_error_message_from_exception(self, e):
         """ This method is used to get appropriate error message from the exception.
         :param e: Exception object
@@ -84,13 +68,6 @@ class MsgFileParserConnector(BaseConnector):
                     error_msg = e.args[0]
         except:
             pass
-
-        try:
-            error_msg = self._handle_py_ver_compat_for_input_str(error_msg)
-        except TypeError:
-            error_msg = MSGFILEPARSER_UNICODE_DAMMIT_TYPE_ERR
-        except:
-            error_msg = MSGFILEPARSER_ERR_MSG_UNAVAILABLE
 
         return "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
 
@@ -203,7 +180,7 @@ class MsgFileParserConnector(BaseConnector):
             return RetVal(action_result.set_status(phantom.APP_ERROR, "Invalid method: {0}".format(method)), resp_json)
 
         # Create a URL to connect to
-        url = self._base_url + endpoint
+        url = '{}{}'.format(self._base_url, endpoint)
 
         try:
             r = request_func(
@@ -253,25 +230,14 @@ class MsgFileParserConnector(BaseConnector):
     def _add_vault_hashes_to_dictionary(self, cef_artifact, vault_id, action_result):
 
         try:
-            url = '{0}rest/container_attachment'.format(self._get_phantom_base_url())
-            query_params = {
-                    '_filter_vault_document__hash': '"{}"'.format(vault_id),
-                    'page_size': 1,
-                    'pretty': ''
-            }
-            r = requests.get(url, params=query_params, verify=False)
-            resp_data = r.json()
-            vault_info = resp_data['data'][0]
-            for k in list(vault_info):
-                if k.startswith('_pretty_'):
-                    name = k[8:]
-                    vault_info[name] = vault_info.pop(k)
+            success, message, vault_info = ph_rules.vault_info(vault_id=vault_id)
+            if not success:
+                self.debug_print("Failed to get vault info of extracted file. Error: {0}".format(message))
+                return action_result.set_status(phantom.APP_ERROR, "Failed to get vault info of extracted file. Error: {0}".format(message))
+            vault_info = list(vault_info)[0]
         except Exception as e:
             error_msg = self._get_error_message_from_exception(e)
             return action_result.set_status(phantom.APP_ERROR, "Failed to get vault info of extracted file. Error: {0}".format(error_msg))
-
-        if (not vault_info):
-            return (phantom.APP_ERROR, "Vault ID not found")
 
         # /rest/container_attachment (with pretty) returns metadata about the file including multiple common hash formats
         try:
@@ -296,11 +262,11 @@ class MsgFileParserConnector(BaseConnector):
 
         return (phantom.APP_SUCCESS)
 
-    def _get_vault_artifact(self, vault_info, file_name, action_result):
+    def _get_vault_artifact(self, vault_id, file_name, action_result):
 
         vault_artifact = {'name': 'Vault Artifact'}
         cef = vault_artifact['cef'] = dict()
-        cef['vaultId'] = vault_info.get('vault_id')
+        cef['vaultId'] = vault_id
         cef['fileName'] = file_name
 
         ret_val = self._add_vault_hashes_to_dictionary(cef, cef['vaultId'], action_result)
@@ -313,13 +279,13 @@ class MsgFileParserConnector(BaseConnector):
             email_headers = mail.items()
 
             # TODO: the next 2 ifs can be condensed to use 'or'
-            if (charset is None):
+            if charset is None:
                 charset = mail.get_content_charset().strip() if mail.get_content_charset() else None
 
-        if (not charset):
+        if not charset:
             charset = 'utf-8'
 
-        if (not email_headers):
+        if not email_headers:
             return {}
 
         # Convert the header tuple into a dictionary
@@ -336,12 +302,12 @@ class MsgFileParserConnector(BaseConnector):
         # Handle received seperately
         received_headers = [str(x[1]) for x in email_headers if x[0].lower() == 'received']
 
-        if (received_headers):
+        if received_headers:
             headers['Received'] = received_headers
 
         # handle the subject string, if required add a new key
         subject = headers.get('Subject')
-        if (subject):
+        if subject:
             headers['decodedSubject'] = subject
 
         return headers
@@ -359,7 +325,7 @@ class MsgFileParserConnector(BaseConnector):
                 hdr = hdr.replace('?UTF-8?Q?', '').replace('?utf-8?Q?', '').replace('?=', '')
                 hdr = quopri.decodestring(hdr)
             hdr = hdr.decode(charset, "ignore")
-            decoded_header = decoded_header + hdr
+            decoded_header = '{}{}'.format(decoded_header, hdr)
             return decoded_header
         except Exception as e:
             error_msg = self._get_error_message_from_exception(e)
@@ -374,7 +340,10 @@ class MsgFileParserConnector(BaseConnector):
             except:
                 email_text = msg._getStringStream('__substg1.0_007D')
             if email_text:
-                mail = email.message_from_string(email_text)
+                if isinstance(email_text, bytes):
+                    mail = email.message_from_string(self._extract_str(email_text))
+                else:
+                    mail = email.message_from_string(email_text)
 
                 # When '_headers' = [] (empty-list), bool(mail) returns False
                 if not mail:
@@ -388,11 +357,14 @@ class MsgFileParserConnector(BaseConnector):
                         self.debug_print("Trying to fetch the headers information by extraction of additional headers prefix data")
                         prefix_header = "Header-Prefix: {}".format(email_text[:first_lf_ind + 1])
                         email_text = "{}{}".format(prefix_header, email_text[first_lf_ind + 1: ])
-                        mail = email.message_from_string(email_text)
+                        if isinstance(email_text, bytes):
+                            mail = email.message_from_string(self._extract_str(email_text))
+                        else:
+                            mail = email.message_from_string(email_text)
                     else:
                         try:
                             self.debug_print("Unable to fetch the additional header prefix and other headers details from the email text")
-                            self.debug_print("Email-text: {}".format(self._handle_py_ver_compat_for_input_str(email_text)))
+                            self.debug_print("Email-text: {}".format(self._extract_str(email_text)))
                         except:
                             self.debug_print("Error occurred while logging the email text in _create_email_artifact")
                 headers = self._get_email_headers_from_mail(mail, charset)
@@ -407,26 +379,26 @@ class MsgFileParserConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR,
                     "Unable to get email header string from message. Error: {0}".format(error_msg))
 
-        if (not headers):
+        if not headers:
             return action_result.set_status(phantom.APP_ERROR, "Unable to fetch the headers information from the provided MSG file")
 
         # Parse email keys first
         cef_artifact = {}
         cef_types = {}
 
-        if (headers.get('From')):
+        if headers.get('From'):
             emails = headers['From']
-            if (emails):
+            if emails:
                 cef_artifact.update({'fromEmail': emails})
 
-        if (headers.get('To')):
+        if headers.get('To'):
             emails = headers['To']
-            if (emails):
+            if emails:
                 cef_artifact.update({'toEmail': emails})
 
         # if the header did not contain any email addresses then ignore this artifact
         message_id = headers.get('message-id')
-        if ((not cef_artifact) and (message_id is None)):
+        if (not cef_artifact) and (message_id is None):
             return action_result.set_status(phantom.APP_ERROR, "Unable to fetch the fromEmail, toEmail, and message ID information from the provided MSG file")
 
         try:
@@ -436,7 +408,7 @@ class MsgFileParserConnector(BaseConnector):
 
         try:
             body_html = msg._getStringStream('__substg1.0_1013')
-            if (body_html):
+            if body_html:
                 try:
                     cef_artifact['bodyHtml'] = body_html.decode('utf-8', 'replace').replace(u'\u0000', '')
                 except:
@@ -446,7 +418,7 @@ class MsgFileParserConnector(BaseConnector):
 
         cef_types.update({'fromEmail': ['email'], 'toEmail': ['email']})
 
-        if (headers):
+        if headers:
             # convert from CaseInsensitive to normal dict, so that it is serializable
             cef_artifact['emailHeaders'] = dict(headers)
 
@@ -460,7 +432,7 @@ class MsgFileParserConnector(BaseConnector):
 
         input_dict_str = None
 
-        if (not input_dict):
+        if not input_dict:
             return None
 
         try:
@@ -480,7 +452,7 @@ class MsgFileParserConnector(BaseConnector):
 
         for i, curr_attach in enumerate(msg.attachments or []):
 
-            if (not curr_attach.data):
+            if not curr_attach.data:
                 continue
 
             # get the file name
@@ -502,14 +474,19 @@ class MsgFileParserConnector(BaseConnector):
                         "Unable to write file to tmp folder for attachment number: {0}. Error: {1}".format(i, error_msg)))
 
             try:
-                vault_info = Vault.add_attachment(tmp_file_path, container_id=container_id, file_name=file_name)
+                success, message, vault_id = ph_rules.vault_add(container=container_id, file_location=tmp_file_path, file_name=file_name)
+
+                if not success:
+                    self.debug_print("Failed to add file to Vault: {0}".format(message))
+                    return RetVal(action_result.set_status(phantom.APP_ERROR, "Unable to add file to the vault: {}".format(message)))
+
             except Exception as e:
                 error_msg = self._get_error_message_from_exception(e)
                 return RetVal(action_result.set_status(phantom.APP_ERROR,
                         "Unable to add file to the vault for attachment number: {0}. Error: {1}".format(i, error_msg)))
 
-            ret_val, vault_artifact = self._get_vault_artifact(vault_info, file_name, action_result)
-            if (ret_val and vault_artifact):
+            ret_val, vault_artifact = self._get_vault_artifact(vault_id, file_name, action_result)
+            if ret_val and vault_artifact:
                 vault_artifact['severity'] = artifact_severity
                 if run_auto_flag is False:
                     vault_artifact['run_automation'] = run_auto_flag
@@ -532,12 +509,16 @@ class MsgFileParserConnector(BaseConnector):
         for artifact in artifacts:
             artifact['container_id'] = container_id
         if artifacts:
-            status, message, id_list = self.save_artifacts(artifacts)
+            try:
+                status, message, id_list = self.save_artifacts(artifacts)
+            except Exception as e:
+                error_msg = self._get_error_message_from_exception(e)
+                return action_result.set_status(phantom.APP_ERROR, "Error Occurred while saving artifacts : {}".format(error_msg))
         else:
             # No IOCS found
             return action_result.set_status(phantom.APP_SUCCESS)
         if phantom.is_fail(status):
-            message = message + '. Please validate severity parameter'
+            message = '{}. Please validate severity parameter'.format(message)
             return action_result.set_status(phantom.APP_ERROR, message)
         return phantom.APP_SUCCESS
 
@@ -562,7 +543,7 @@ class MsgFileParserConnector(BaseConnector):
         container.update(_container_common)
 
         status, message, container_id = self.save_container(container)
-        if (phantom.is_fail(status)):
+        if phantom.is_fail(status):
             return RetVal(action_result.set_status(status, message))
 
         return (phantom.APP_SUCCESS, container_id)
@@ -590,22 +571,15 @@ class MsgFileParserConnector(BaseConnector):
         # get the .msg file from the vault
         vault_id = param['vault_id']
         try:
-            url = '{0}rest/container_attachment'.format(self._get_phantom_base_url())
-            query_params = {
-                    '_filter_vault_document__hash': '"{}"'.format(vault_id),
-                    'page_size': 1,
-                    'pretty': ''
-            }
-            r = requests.get(url, params=query_params, verify=False)
-            resp_data = r.json()
-            vault_info = resp_data['data'][0]
-            for k in list(vault_info):
-                if k.startswith('_pretty_'):
-                    name = k[8:]
-                    vault_info[name] = vault_info.pop(k)
+            success, message, vault_info = ph_rules.vault_info(vault_id=vault_id)
+            if not success:
+                self.debug_print("Failed to get vault info before extracting : {0}".format(message))
+                return action_result.set_status(phantom.APP_ERROR, "Failed to get vault info before extracting: {}".format(message))
+            vault_info = list(vault_info)[0]
             vault_path = vault_info['path']
-        except:
-            return action_result.set_status(phantom.APP_ERROR, "Failed to get vault info before extracting")
+        except Exception as e:
+            error_msg = self._get_error_message_from_exception(e)
+            return action_result.set_status(phantom.APP_ERROR, "Failed to get vault info before extracting: {}".format(error_msg))
 
         try:
             msg = Message(vault_path)
@@ -621,7 +595,7 @@ class MsgFileParserConnector(BaseConnector):
 
         ret_val = self._create_email_artifact(msg, email_artifact, action_result, param['artifact_name'])
 
-        if (phantom.is_fail(ret_val)):
+        if phantom.is_fail(ret_val):
             return action_result.get_status()
 
         # Set severity and run_automation flag of artifacts
@@ -646,7 +620,7 @@ class MsgFileParserConnector(BaseConnector):
         # now work on the attachments
         ret_val, vault_artifacts = self._add_attachments_to_container(msg, container_id, severity, run_auto_flag, action_result)
 
-        if (phantom.is_success(ret_val) and vault_artifacts):
+        if phantom.is_success(ret_val) and vault_artifacts:
             artifacts.extend(vault_artifacts)
 
         # now add all the artifacts
@@ -686,12 +660,6 @@ class MsgFileParserConnector(BaseConnector):
 
         # get the asset config
         config = self.get_config()
-
-        # Fetching the Python major version
-        try:
-            self._python_version = int(sys.version_info[0])
-        except:
-            return self.set_status(phantom.APP_ERROR, "Error occurred while getting the Phantom server's Python major version")
 
         """
         # Access values in asset config by the name
@@ -733,16 +701,17 @@ if __name__ == '__main__':
     username = args.username
     password = args.password
 
-    if (username is not None and password is None):
+    if username is not None and password is None:
 
         # User specified a username but not a password, so ask
         import getpass
         password = getpass.getpass("Password: ")
 
-    if (username and password):
+    if username and password:
         try:
             print("Accessing the Login page")
-            r = requests.get(MSGFILEPARSER_LOGIN_URL, verify=False)
+            login_url = '{}login'.format(BaseConnector._get_phantom_base_url())
+            r = requests.get(login_url, verify=False)
             csrftoken = r.cookies['csrftoken']
 
             data = dict()
@@ -751,14 +720,14 @@ if __name__ == '__main__':
             data['csrfmiddlewaretoken'] = csrftoken
 
             headers = dict()
-            headers['Cookie'] = 'csrftoken=' + csrftoken
-            headers['Referer'] = MSGFILEPARSER_LOGIN_URL
+            headers['Cookie'] = 'csrftoken={}'.format(csrftoken)
+            headers['Referer'] = login_url
 
             print("Logging into Platform to get the session id")
-            r2 = requests.post(MSGFILEPARSER_LOGIN_URL, verify=False, data=data, headers=headers)
+            r2 = requests.post(login_url, verify=False, data=data, headers=headers)
             session_id = r2.cookies['sessionid']
         except Exception as e:
-            print("Unable to get session id from the platfrom. Error: " + str(e))
+            print("Unable to get session id from the platfrom. Error: {}".format(str(e)))
             exit(1)
 
     with open(args.input_test_json) as f:
@@ -769,7 +738,7 @@ if __name__ == '__main__':
         connector = MsgFileParserConnector()
         connector.print_progress_message = True
 
-        if (session_id is not None):
+        if session_id is not None:
             in_json['user_session_token'] = session_id
             connector._set_csrf_info(csrftoken, headers['Referer'])
 
