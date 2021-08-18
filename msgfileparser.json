@@ -10,7 +10,7 @@
     "product_version_regex": ".*",
     "publisher": "Splunk",
     "license": "Copyright (c) 2019-2021 Splunk Inc.",
-    "app_version": "2.0.0-CS",
+    "app_version": "2.2.0-CS",
     "utctime_updated": "2019-11-19T20:21:31.000000Z",
     "package_name": "phantom_msgfileparser",
     "main_module": "msgfileparser_connector.py",
@@ -53,22 +53,6 @@
                 "enabled": false
             },
             "parameters": {
-                "artifact_name": {
-                    "description": "Name of artifact, default (Email Artifact)",
-                    "data_type": "string",
-                    "default": "Email Artifact",
-                    "required": true,
-                    "order": 3
-                },
-                "container_id": {
-                    "description": "Add created artifacts to this container",
-                    "data_type": "numeric",
-                    "contains": [
-                        "phantom container id"
-                    ],
-                    "primary": true,
-                    "order": 1
-                },
                 "vault_id": {
                     "required": true,
                     "description": "Vault ID of the .msg file",
@@ -80,6 +64,15 @@
                     "primary": true,
                     "order": 0
                 },
+                "container_id": {
+                    "description": "Add created artifacts to this container",
+                    "data_type": "numeric",
+                    "contains": [
+                        "phantom container id"
+                    ],
+                    "primary": true,
+                    "order": 1
+                },
                 "label": {
                     "description": "Creates a new Container with this label to add created artifacts",
                     "data_type": "string",
@@ -89,22 +82,29 @@
                     "primary": true,
                     "order": 2
                 },
+                "artifact_name": {
+                    "description": "Name of artifact, default (Email Artifact)",
+                    "data_type": "string",
+                    "default": "Email Artifact",
+                    "required": true,
+                    "order": 3
+                },
                 "severity": {
                     "description": "Severity applied to the artifact(s) extracted from the .msg file",
                     "data_type": "string",
                     "default": "medium",
-                    "order": 3
+                    "order": 4
                 },
                 "run_automation": {
                     "description": "If true, active playbooks will be triggered when artifacts are created",
                     "data_type": "boolean",
                     "default": true,
-                    "order": 4
+                    "order": 5
                 }
             },
             "output": [
                 {
-                    "column_order": 4,
+                    "column_order": 3,
                     "data_path": "action_result.status",
                     "example_values": [
                         "success",
@@ -140,7 +140,7 @@
                         "events",
                         "email"
                     ],
-                    "column_order": 3,
+                    "column_order": 2,
                     "column_name": "Label"
                 },
                 {
@@ -170,7 +170,7 @@
                         "492cafe7223b63c03413a290b8b7cefdfbc9e5d2",
                         "f1cba62002865cdcee8ce010abb87510c32c48ca"
                     ],
-                    "column_order": 2,
+                    "column_order": 1,
                     "column_name": "Vault ID"
                 },
                 {
@@ -195,7 +195,7 @@
                         256,
                         193
                     ],
-                    "column_order": 1,
+                    "column_order": 0,
                     "column_name": "Container ID"
                 },
                 {
