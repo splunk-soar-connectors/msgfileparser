@@ -10,6 +10,7 @@ from phantom.base_connector import BaseConnector
 from phantom.action_result import ActionResult
 from phantom.vault import Vault
 import phantom.rules as ph_rules
+import phantom.utils as ph_utils
 
 # Constants imports
 from msgfileparser_consts import *
@@ -124,7 +125,7 @@ class MsgFileParserConnector(BaseConnector):
         except:
             pass
 
-        return (phantom.APP_SUCCESS)
+        return phantom.APP_SUCCESS
 
     def _get_vault_artifact(self, attachment_vault_id, file_name, action_result):
 
@@ -301,12 +302,44 @@ class MsgFileParserConnector(BaseConnector):
             self.debug_print('Handled exception in _create_dict_hash', self._get_error_message_from_exception(e))
             return None
 
-        return hashlib.md5(input_dict_str.encode('utf-8')).hexdigest()
+        return hashlib.sha256(input_dict_str.encode('utf-8')).hexdigest()
+
+    def _is_ip(self, ip):
+        if ph_utils.is_ip(ip):
+            return True
+
+        return self._is_ipv6(ip)
+
+    def _clean_url(self, url):
+        url = url.strip('>),.]\r\n')
+
+        # Check before splicing, find returns -1 if not found
+        # and you will end up splicing incorrectly on -1
+        if '<' in url:
+            url = url[:url.find('<')]
+
+        if '>' in url:
+            url = url[:url.find('>')]
+
+        return url
+
+    def _is_ipv6(self, input_ip):
+        try:
+            socket.inet_pton(socket.AF_INET6, input_iop)
+        except Exception:  # not a valid ipv6 address
+            return False
+        return True
 
     def _add_attachments_to_container(self, mail, container_id, artifact_severity, run_auto_flag, action_result, email_artifact):
 
-        # get the attachments
+        # get the attachments, domains and urls
         vault_artifacts = list()
+        url_artifacts = list()
+        domain_artifacts = list()
+
+        urls = set()
+        domains = set()
+
         if mail.is_multipart():
             ret_val = None
             for part in mail.walk():
@@ -331,6 +364,7 @@ class MsgFileParserConnector(BaseConnector):
                         body_payload = body_payload.decode(charset)
                     if 'bodyText' not in email_artifact['cef']:
                         email_artifact['cef']['bodyText'] = body_payload
+                        self._extract_urls_domains(action_result, body_payload, urls, domains)
                     continue
 
                 # Process Attachments
@@ -387,7 +421,83 @@ class MsgFileParserConnector(BaseConnector):
                 body_payload = body_payload.decode(charset)
             email_artifact['cef']['bodyText'] = body_payload
 
-        return (phantom.APP_SUCCESS, vault_artifacts)
+            # Extract URLs and domains from file data
+            self._extract_urls_domains(action_result, body_payload, urls, domains)
+
+        self._add_artifacts('requestURL', urls, 'URL Artifact', 0, artifact_severity, url_artifacts)
+        self._add_artifacts('destinationDnsDomain', domains, 'Domain Artifact', 0, artifact_severity, domain_artifacts)
+
+        return (phantom.APP_SUCCESS, vault_artifacts, url_artifacts, domain_artifacts)
+
+    def _extract_urls_domains(self, action_result, file_data, urls, domains):
+
+        email_regexc = re.compile(EMAIL_REGEX, re.IGNORECASE)
+        email_regexc2 = re.compile(EMAIL_REGEX2, re.IGNORECASE)
+        uri_regexc = re.compile(URI_REGEX)
+
+        try:
+            soup = BeautifulSoup(file_data, "html.parser")
+        except Exception as e:
+            error_code, error_msg = self._get_error_message_from_exception(e)
+            err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+            return action_result.set_status(phantom.APP_ERROR, err)
+
+        uris = []
+        # get all href tags
+        links = soup.find_all(href=True)
+        if links:
+            uris = [x['href'] for x in links if not x['href'].startswith('mailto:')]
+            uri_text = [self._clean_url(x.get_text()) for x in links]
+            if uri_text:
+                uri_text = [x for x in uri_text if x.startswith('http')]
+                if uri_text:
+                    uris.extend(uri_text)
+        else:
+            # parse it as a text file
+            uris = re.findall(uri_regexc, file_data)
+            if uris:
+                uris = [self._clean_url(x) for x in uris]
+
+        urls |= set(uris)
+
+        # exctract domains
+        for uri in uris:
+            domain = phantom.get_host_from_url(uri)
+            if domain and not self._is_ip(domain):
+                domains.add(domain)
+
+        # work on any mailto urls if present
+        if links:
+            emails = [x['href'] for x in links if x['href'].startswith('mailto')]
+        else:
+            # parse as text
+            emails = []
+            emails.extend(re.findall(email_regexc, file_data))
+            emails.extend(re.findall(email_regexc2, file_data))
+
+        for curr_email in emails:
+            domain = curr_email[curr_email.find('@') + 1:]
+            if domain and not self._is_ip(domain):
+                domains.add(domain)
+
+        return phantom.APP_SUCCESS
+
+    def _add_artifacts(self, cef_key, input_set, artifact_name, start_index, artifact_severity, artifacts):
+
+        added_artifacts = 0
+        for entry in input_set:
+
+            if not entry:
+                continue
+
+            artifact = {}
+            artifact['run_automation'] = False
+            artifact['severity'] = artifact_severity
+            artifact['cef'] = {cef_key: entry}
+            artifact['name'] = artifact_name
+            artifacts.append(artifact)
+
+        return added_artifacts
 
     def _sanitize_dict(self, obj):
         if isinstance(obj, str):
@@ -400,18 +510,21 @@ class MsgFileParserConnector(BaseConnector):
 
     def _save_artifacts(self, action_result, artifacts, container_id):
 
+        saved_artifact_count = 0
+
         for artifact in artifacts:
             artifact['container_id'] = container_id
         if artifacts:
             artifacts = self._sanitize_dict(artifacts)
             status, message, id_list = self.save_artifacts(artifacts)
+            saved_artifact_count = len(set(id_list))
         else:
             # No IOCS found
-            return action_result.set_status(phantom.APP_SUCCESS)
+            return action_result.set_status(phantom.APP_SUCCESS), saved_artifact_count
         if phantom.is_fail(status):
             message = '{}. Please validate severity parameter'.format(message)
-            return action_result.set_status(phantom.APP_ERROR, message)
-        return phantom.APP_SUCCESS
+            return action_result.set_status(phantom.APP_ERROR, message), saved_artifact_count
+        return phantom.APP_SUCCESS, saved_artifact_count
 
     def _create_container(self, action_result, email_artifact, label, container_severity, vault_path):
 
@@ -514,10 +627,15 @@ class MsgFileParserConnector(BaseConnector):
                 return action_result.get_status()
 
         # now work on the attachments
-        ret_val, vault_artifacts = self._add_attachments_to_container(mail, container_id, severity, run_auto_flag, action_result, email_artifact)
+        ret_val, vault_artifacts, url_artifacts, domain_artifacts = self._add_attachments_to_container(mail, container_id, severity, run_auto_flag, action_result, email_artifact)
 
-        if phantom.is_success(ret_val) and vault_artifacts:
-            artifacts.extend(vault_artifacts)
+        if phantom.is_success(ret_val):
+            if vault_artifacts:
+                artifacts.extend(vault_artifacts)
+            if url_artifacts:
+                artifacts.extend(url_artifacts)
+            if domain_artifacts:
+                artifacts.extend(domain_artifacts)
 
         try:
             with CompoundFileReader(vault_path) as doc:
@@ -530,8 +648,16 @@ class MsgFileParserConnector(BaseConnector):
                                 soup = BeautifulSoup(value, 'html.parser')
                                 body_html = soup.prettify()
                                 if body_html:
+                                    urls = set()
+                                    domains = set()
                                     email_artifact['cef']['bodyHtml'] = body_html
                                     email_artifact['cef']['bodyText'] = soup.get_text()
+                                    self._extract_urls_domains(action_result, value, urls, domains)
+
+                                    self._add_artifacts('requestURL', urls, 'URL Artifact', 0, url_artifacts)
+                                    self._add_artifacts('destinationDnsDomain', domains, 'Domain Artifact', 0, domain_artifacts)
+                                    artifacts.extend(url_artifacts)
+                                    artifacts.extend(domain_artifacts)
                                 break
                         except Exception as e:
                             error_msg = self._get_error_message_from_exception(e)
@@ -542,13 +668,13 @@ class MsgFileParserConnector(BaseConnector):
             self.debug_print("Unable to read bodyHtml from file. {}.".format(error_msg))
 
         # now add all the artifacts
-        ret_val = self._save_to_existing_container(action_result, artifacts, container_id)
+        ret_val, saved_artifact_count = self._save_to_existing_container(action_result, artifacts, container_id)
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
         # Add a dictionary that is made up of the most important values from data into the summary
         summary = action_result.update_summary({})
-        summary['artifacts_found'] = len(artifacts)
+        summary['artifacts_found'] = saved_artifact_count
         summary['container_id'] = container_id
 
         return action_result.set_status(phantom.APP_SUCCESS)

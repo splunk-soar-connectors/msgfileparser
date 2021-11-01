@@ -24,3 +24,8 @@ MSGFILEPARSER_PARSER_DECODE_ERR = "Failed to parse message. Error: {}"
 
 # Consts for action names
 MSGFILEPARSER_EXTRACT_EMAIL_ACTION = "extract_email"
+
+# Regex statements used for extraction
+URI_REGEX = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+#]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
+EMAIL_REGEX = r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b"
+EMAIL_REGEX2 = r'".*"@[A-Z0-9.-]+\.[A-Z]{2,}\b'
