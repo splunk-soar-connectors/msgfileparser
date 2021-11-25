@@ -294,9 +294,13 @@ class MsgFileParserConnector(BaseConnector):
 
         # Decode unicode subject
         utf_regex = re.compile(r'\?utf-8\?')
+        ascii_regex = re.compile(r'\?us-ascii\?')
         for key, hdr in headers.items():
             if utf_regex.search(hdr.lower()):
                 chars = 'utf-8'
+                headers[key] = self._decode_header(hdr, chars)
+            elif ascii_regex.search(hdr.lower()):
+                chars = 'unicode_escape'
                 headers[key] = self._decode_header(hdr, chars)
 
         # Handle received seperately
@@ -315,12 +319,21 @@ class MsgFileParserConnector(BaseConnector):
     def _decode_header(self, hdr, charset):
 
         # Decode header unicode
-        hdr = hdr.replace('"', '').replace(' ', '')
+        hdr = hdr.replace('"', '')
         decoded_header = ''
         try:
             if '?utf-8?b?' in hdr.lower():
-                hdr = hdr.replace('?UTF-8?B?', '').replace('?utf-8?B?', '').replace('?=', '')
-                hdr = base64.b64decode(hdr)
+                utf_strings = re.findall(r'=\?UTF-8\?B\?(?:(?!=\?=).)*?=\?=', hdr, re.IGNORECASE)
+                for utf_sub_string in utf_strings:
+                    original_utf_string = utf_sub_string
+                    utf_sub_string = utf_sub_string.replace('?UTF-8?B?', '').replace('?utf-8?B?', '').replace('?utf-8?b?', '').replace('?=', '')
+                    utf_sub_string = base64.b64decode(utf_sub_string)
+                    hdr = hdr.replace(original_utf_string, str(utf_sub_string.decode(charset, "ignore")))
+                decoded_header = '{}{}'.format(decoded_header, hdr)
+                return decoded_header
+            elif '?us-ascii?q?' in hdr.lower():
+                hdr = hdr.replace('=?us-ascii?Q?', '').replace('=?us-ascii?q?', '').replace('?=', '')
+                hdr = quopri.decodestring(hdr)
             elif '?utf-8?q?' in hdr.lower():
                 hdr = hdr.replace('?UTF-8?Q?', '').replace('?utf-8?Q?', '').replace('?=', '')
                 hdr = quopri.decodestring(hdr)
@@ -409,6 +422,9 @@ class MsgFileParserConnector(BaseConnector):
         try:
             body_html = msg._getStringStream('__substg1.0_1013')
             if body_html:
+                soup = BeautifulSoup(body_html, 'html.parser')
+                body_html = soup.prettify()
+                cef_artifact['bodyText'] = soup.get_text()
                 try:
                     cef_artifact['bodyHtml'] = body_html.decode('utf-8', 'replace').replace(u'\u0000', '')
                 except:
@@ -504,12 +520,22 @@ class MsgFileParserConnector(BaseConnector):
 
         return string
 
+    def _sanitize_dict(self, obj):
+        if isinstance(obj, str):
+            return obj.replace('\u0000', '')
+        if isinstance(obj, list):
+            return [self._sanitize_dict(item) for item in obj]
+        if isinstance(obj, dict):
+            return {k: self._sanitize_dict(v) for k, v in obj.items()}
+        return obj
+
     def _save_artifacts(self, action_result, artifacts, container_id):
 
         for artifact in artifacts:
             artifact['container_id'] = container_id
         if artifacts:
             try:
+                artifacts = self._sanitize_dict(artifacts)
                 status, message, id_list = self.save_artifacts(artifacts)
             except Exception as e:
                 error_msg = self._get_error_message_from_exception(e)
