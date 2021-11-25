@@ -10,11 +10,11 @@
     "product_version_regex": ".*",
     "publisher": "Splunk",
     "license": "Copyright (c) 2019-2021 Splunk Inc.",
-    "app_version": "2.2.0-CS",
+    "app_version": "2.3.0-CS",
     "utctime_updated": "2019-11-19T20:21:31.000000Z",
     "package_name": "phantom_msgfileparser",
     "main_module": "msgfileparser_connector.py",
-    "min_phantom_version": "4.9.39220",
+    "min_phantom_version": "5.0.0",
     "python_version": "3",
     "latest_tested_versions": [
         "Module ExtractMsg-0.3-py2-none-any.whl"
