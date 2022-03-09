@@ -15,30 +15,29 @@
 #
 #
 # Phantom App imports
+import base64
+import hashlib
+import json
+import os
+import quopri
+import re
+import tempfile
+from email.header import decode_header
+
+import outlookmsgfile
 import phantom.app as phantom
-from phantom.base_connector import BaseConnector
-from phantom.action_result import ActionResult
-from phantom.vault import Vault
 import phantom.rules as ph_rules
 import phantom.utils as ph_utils
+import requests
+from bs4 import BeautifulSoup, UnicodeDammit
+from compoundfiles import CompoundFileReader
+from phantom.action_result import ActionResult
+from phantom.base_connector import BaseConnector
+from phantom.vault import Vault
+from requests.structures import CaseInsensitiveDict
 
 # Constants imports
 from msgfileparser_consts import *
-
-import requests
-import json
-import tempfile
-import os
-import hashlib
-import base64
-import quopri
-import outlookmsgfile
-import re
-from email.header import decode_header
-from bs4 import UnicodeDammit, BeautifulSoup
-from compoundfiles import CompoundFileReader
-from requests.structures import CaseInsensitiveDict
-
 
 _container_common = {
     "run_automation": False  # Don't run any playbooks, when this artifact is added
@@ -754,8 +753,9 @@ class MsgFileParserConnector(BaseConnector):
 
 if __name__ == '__main__':
 
-    import pudb
     import argparse
+
+    import pudb
 
     pudb.set_trace()
 
