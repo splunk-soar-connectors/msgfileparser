@@ -1,6 +1,6 @@
 # File: msgfileparser_connector.py
 #
-# Copyright (c) 2019-2021 Splunk Inc.
+# Copyright (c) 2019-2022 Splunk Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -77,7 +77,8 @@ class MsgFileParserConnector(BaseConnector):
             if parameter < 0:
                 return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_INVALID_INT_ERR.format(msg="non-negative", param=key)), None
             if not allow_zero and parameter == 0:
-                return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_INVALID_INT_ERR.format(msg="non-zero positive", param=key)), None
+                return action_result.set_status(phantom.APP_ERROR,
+                    MSGFILEPARSER_INVALID_INT_ERR.format(msg="non-zero positive", param=key)), None
 
         return phantom.APP_SUCCESS, parameter
 
@@ -299,6 +300,19 @@ class MsgFileParserConnector(BaseConnector):
 
         return (phantom.APP_SUCCESS)
 
+    def _get_fips_enabled(self):
+        try:
+            from phantom_common.install_info import is_fips_enabled
+        except ImportError:
+            return False
+
+        fips_enabled = is_fips_enabled()
+        if fips_enabled:
+            self.debug_print('FIPS is enabled')
+        else:
+            self.debug_print('FIPS is not enabled')
+        return fips_enabled
+
     def _create_dict_hash(self, input_dict):
 
         input_dict_str = None
@@ -311,6 +325,10 @@ class MsgFileParserConnector(BaseConnector):
         except Exception as e:
             self.debug_print('Handled exception in _create_dict_hash', self._get_error_message_from_exception(e))
             return None
+
+        fips_enabled = self._get_fips_enabled()
+        if not fips_enabled:
+            return hashlib.md5(input_dict_str.encode('utf-8')).hexdigest()
 
         return hashlib.sha256(input_dict_str.encode('utf-8')).hexdigest()
 
@@ -637,7 +655,8 @@ class MsgFileParserConnector(BaseConnector):
                 return action_result.get_status()
 
         # now work on the attachments
-        ret_val, vault_artifacts, url_artifacts, domain_artifacts = self._add_attachments_to_container(mail, container_id, severity, run_auto_flag, action_result, email_artifact)
+        ret_val, vault_artifacts, url_artifacts, domain_artifacts = self._add_attachments_to_container(mail,
+            container_id, severity, run_auto_flag, action_result, email_artifact)
 
         if phantom.is_success(ret_val):
             if vault_artifacts:
