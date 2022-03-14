@@ -1,6 +1,6 @@
 # File: msgfileparser_connector.py
 #
-# Copyright (c) 2019-2021 Splunk Inc.
+# Copyright (c) 2019-2022 Splunk Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,30 +15,29 @@
 #
 #
 # Phantom App imports
+import base64
+import hashlib
+import json
+import os
+import quopri
+import re
+import tempfile
+from email.header import decode_header
+
+import outlookmsgfile
 import phantom.app as phantom
-from phantom.base_connector import BaseConnector
-from phantom.action_result import ActionResult
-from phantom.vault import Vault
 import phantom.rules as ph_rules
 import phantom.utils as ph_utils
+import requests
+from bs4 import BeautifulSoup, UnicodeDammit
+from compoundfiles import CompoundFileReader
+from phantom.action_result import ActionResult
+from phantom.base_connector import BaseConnector
+from phantom.vault import Vault
+from requests.structures import CaseInsensitiveDict
 
 # Constants imports
 from msgfileparser_consts import *
-
-import requests
-import json
-import tempfile
-import os
-import hashlib
-import base64
-import quopri
-import outlookmsgfile
-import re
-from email.header import decode_header
-from bs4 import UnicodeDammit, BeautifulSoup
-from compoundfiles import CompoundFileReader
-from requests.structures import CaseInsensitiveDict
-
 
 _container_common = {
     "run_automation": False  # Don't run any playbooks, when this artifact is added
@@ -77,7 +76,8 @@ class MsgFileParserConnector(BaseConnector):
             if parameter < 0:
                 return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_INVALID_INT_ERR.format(msg="non-negative", param=key)), None
             if not allow_zero and parameter == 0:
-                return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_INVALID_INT_ERR.format(msg="non-zero positive", param=key)), None
+                return action_result.set_status(phantom.APP_ERROR,
+                    MSGFILEPARSER_INVALID_INT_ERR.format(msg="non-zero positive", param=key)), None
 
         return phantom.APP_SUCCESS, parameter
 
@@ -299,6 +299,19 @@ class MsgFileParserConnector(BaseConnector):
 
         return (phantom.APP_SUCCESS)
 
+    def _get_fips_enabled(self):
+        try:
+            from phantom_common.install_info import is_fips_enabled
+        except ImportError:
+            return False
+
+        fips_enabled = is_fips_enabled()
+        if fips_enabled:
+            self.debug_print('FIPS is enabled')
+        else:
+            self.debug_print('FIPS is not enabled')
+        return fips_enabled
+
     def _create_dict_hash(self, input_dict):
 
         input_dict_str = None
@@ -311,6 +324,10 @@ class MsgFileParserConnector(BaseConnector):
         except Exception as e:
             self.debug_print('Handled exception in _create_dict_hash', self._get_error_message_from_exception(e))
             return None
+
+        fips_enabled = self._get_fips_enabled()
+        if not fips_enabled:
+            return hashlib.md5(input_dict_str.encode('utf-8')).hexdigest()
 
         return hashlib.sha256(input_dict_str.encode('utf-8')).hexdigest()
 
@@ -637,7 +654,8 @@ class MsgFileParserConnector(BaseConnector):
                 return action_result.get_status()
 
         # now work on the attachments
-        ret_val, vault_artifacts, url_artifacts, domain_artifacts = self._add_attachments_to_container(mail, container_id, severity, run_auto_flag, action_result, email_artifact)
+        ret_val, vault_artifacts, url_artifacts, domain_artifacts = self._add_attachments_to_container(mail,
+            container_id, severity, run_auto_flag, action_result, email_artifact)
 
         if phantom.is_success(ret_val):
             if vault_artifacts:
@@ -735,8 +753,9 @@ class MsgFileParserConnector(BaseConnector):
 
 if __name__ == '__main__':
 
-    import pudb
     import argparse
+
+    import pudb
 
     pudb.set_trace()
 
