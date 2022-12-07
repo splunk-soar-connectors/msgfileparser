@@ -413,7 +413,6 @@ class MsgFileParserConnector(BaseConnector):
         message_id = headers.get('message-id')
         if (not cef_artifact) and (message_id is None):
             return action_result.set_status(phantom.APP_ERROR, "Unable to fetch the fromEmail, toEmail, and message ID information from the provided MSG file")
-
         try:
             cef_artifact['bodyText'] = self._extract_str(msg.body).decode('utf-8', 'replace').replace(u'\u0000', '')
         except:
@@ -424,6 +423,15 @@ class MsgFileParserConnector(BaseConnector):
             if body_html:
                 soup = BeautifulSoup(body_html, 'html.parser')
                 body_html = soup.prettify()
+                hrefs_srcs = soup.body.find_all(href=True)
+                hrefs_srcs.extend(soup.body.find_all(src=True))
+                for link in hrefs_srcs:
+                    new_tag = soup.new_tag("p")
+                    if link.get('href'):
+                        new_tag.string = link.text + " <" + link.get('href') + "> "
+                    elif link.get('src'):
+                        new_tag.string = link.text + " <" + link.get('src') + "> "
+                    link.replace_with(new_tag)
                 cef_artifact['bodyText'] = soup.get_text()
                 try:
                     cef_artifact['bodyHtml'] = body_html.decode('utf-8', 'replace').replace(u'\u0000', '')

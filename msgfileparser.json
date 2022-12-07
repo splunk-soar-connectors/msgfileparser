@@ -33,7 +33,7 @@
             },
             {
                 "module": "ExtractMsg",
-                "input_file": "wheels/ExtractMsg-0.3-py2-none-any.whl"
+                "input_file": "wheels/ExtractMsg-0.3-py2.py3-none-any.whl"
             },
             {
                 "module": "IMAPClient",
