@@ -346,27 +346,6 @@ class MsgFileParserConnector(BaseConnector):
             decoded_header = 'Unable to decode header: {}'.format(error_msg)
             return decoded_header
 
-    def replace_tag_rec(self, link, soup):
-
-        for child in link.children:
-            if isinstance(child, bs4.element.Tag):
-                self.replace_tag_rec(child, soup)
-                new_tag = soup.new_tag("p")
-                if child.get('href'):
-                    if self._validate_url(child.get('href')) or (child.get('href').startswith('mailto:')):
-                        new_tag.string = " <" + child.get('href') + "> " + child.text
-                    else:
-                        new_tag.string = child.text
-                elif child.get('src'):
-                    if self._validate_url(child.get('src')) or (child.get('src').startswith('mailto:')):
-                        new_tag.string = " <" + child.get('src') + "> " + child.text
-                    else:
-                        new_tag.string = child.text
-                try:
-                    child.replace_with(new_tag)
-                except Exception as e:
-                    self.error_print("Error while replacing URL in tags:", e)
-
     def _validate_url(self, url):
 
         validate_uri = URLValidator(schemes=['http', 'https'])
@@ -463,20 +442,17 @@ class MsgFileParserConnector(BaseConnector):
                 srcs = soup.body.find_all(src=True)
                 links.extend(srcs)
                 for link in links:
-                    self.replace_tag_rec(link, soup)
                     new_tag = soup.new_tag("p")
                     if link.get('href'):
                         if self._validate_url(link.get('href')) or (link.get('href').startswith('mailto:')):
-                            new_tag.string = " <" + link.get('href') + "> " + link.text
-                        else:
-                            new_tag.string = link.text
-                    elif link.get('src'):
-                        if self._validate_url(link.get('src')) or (link.get('href').startswith('mailto:')):
-                            new_tag.string = " <" + link.get('src') + "> " + link.text
-                        else:
-                            new_tag.string = link.text
+                            new_tag.string = " <" + link.get('href') + "> "
+                    if link.get('src'):
+                        if self._validate_url(link.get('src')) or (link.get('src').startswith('mailto:')):
+                            new_tag.string = " <" + link.get('src') + "> "
+                        if link.get('alt'):
+                            new_tag.string += link.get('alt')
                     try:
-                        link.replace_with(new_tag)
+                        link.insert_after(new_tag)
                     except Exception as e:
                         self.error_print("Error occurred while replacing URL in tags:", e)
                 cef_artifact['bodyText'] = soup.get_text()
