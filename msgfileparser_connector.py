@@ -12,6 +12,7 @@ from phantom.vault import Vault
 import phantom.rules as ph_rules
 
 import requests
+import bs4
 import json
 import tempfile
 import os
@@ -20,9 +21,9 @@ import hashlib
 import base64
 import quopri
 import re
-from bs4 import BeautifulSoup, UnicodeDammit
 from ExtractMsg import Message
 from requests.structures import CaseInsensitiveDict
+from django.core.validators import URLValidator
 from msgfileparser_consts import *
 
 
@@ -102,7 +103,7 @@ class MsgFileParserConnector(BaseConnector):
         status_code = response.status_code
 
         try:
-            soup = BeautifulSoup(response.text, "html.parser")
+            soup = bs4.BeautifulSoup(response.text, "html.parser")
             error_text = soup.text
             split_lines = error_text.split('\n')
             split_lines = [x.strip() for x in split_lines if x.strip()]
@@ -345,6 +346,37 @@ class MsgFileParserConnector(BaseConnector):
             decoded_header = 'Unable to decode header: {}'.format(error_msg)
             return decoded_header
 
+    def replace_tag_rec(self, link, soup):
+
+        for child in link.children:
+            if isinstance(child, bs4.element.Tag):
+                self.replace_tag_rec(child, soup)
+                new_tag = soup.new_tag("p")
+                if child.get('href'):
+                    if self._validate_url(child.get('href')) or (child.get('href').startswith('mailto:')):
+                        new_tag.string = " <" + child.get('href') + "> " + child.text
+                    else:
+                        new_tag.string = child.text
+                elif child.get('src'):
+                    if self._validate_url(child.get('src')) or (child.get('src').startswith('mailto:')):
+                        new_tag.string = " <" + child.get('src') + "> " + child.text
+                    else:
+                        new_tag.string = child.text
+                try:
+                    child.replace_with(new_tag)
+                except Exception as e:
+                    self.error_print("Error while replacing URL in tags:", e)
+
+    def _validate_url(self, url):
+
+        validate_uri = URLValidator(schemes=['http', 'https'])
+        try:
+            validate_uri(url)
+        except Exception:
+            return False
+
+        return True
+
     def _create_email_artifact(self, msg, email_artifact, action_result, artifact_name, charset=None):
 
         try:
@@ -421,22 +453,33 @@ class MsgFileParserConnector(BaseConnector):
         try:
             body_html = msg._getStringStream('__substg1.0_1013')
             if body_html:
-                soup = BeautifulSoup(body_html, 'html.parser')
+                soup = bs4.BeautifulSoup(body_html, 'html.parser')
                 body_html = soup.prettify()
-                hrefs_srcs = soup.body.find_all(href=True)
-                hrefs_srcs.extend(soup.body.find_all(src=True))
-                for link in hrefs_srcs:
-                    new_tag = soup.new_tag("p")
-                    if link.get('href'):
-                        new_tag.string = link.text + " <" + link.get('href') + "> "
-                    elif link.get('src'):
-                        new_tag.string = link.text + " <" + link.get('src') + "> "
-                    link.replace_with(new_tag)
-                cef_artifact['bodyText'] = soup.get_text()
                 try:
                     cef_artifact['bodyHtml'] = body_html.decode('utf-8', 'replace').replace(u'\u0000', '')
                 except:
                     cef_artifact['bodyHtml'] = body_html.replace(u'\u0000', '')
+                links = soup.body.find_all(href=True)
+                srcs = soup.body.find_all(src=True)
+                links.extend(srcs)
+                for link in links:
+                    self.replace_tag_rec(link, soup)
+                    new_tag = soup.new_tag("p")
+                    if link.get('href'):
+                        if self._validate_url(link.get('href')) or (child.get('href').startswith('mailto:')):
+                            new_tag.string = " <" + link.get('href') + "> " + link.text
+                        else:
+                            new_tag.string = link.text
+                    elif link.get('src'):
+                        if self._validate_url(link.get('src')) or (child.get('href').startswith('mailto:')):
+                            new_tag.string = " <" + link.get('src') + "> " + link.text
+                        else:
+                            new_tag.string = link.text
+                    try:
+                        link.replace_with(new_tag)
+                    except Exception as e:
+                        self.error_print("Error occurred while replacing URL in tags:", e)
+                cef_artifact['bodyText'] = soup.get_text()
         except:
             pass
 
@@ -481,7 +524,7 @@ class MsgFileParserConnector(BaseConnector):
 
             # get the file name
             file_name = (curr_attach.longFilename or curr_attach.shortFilename or 'attached_file-{0}'.format(i))
-            file_name = UnicodeDammit(file_name).unicode_markup.encode('utf-8')
+            file_name = bs4.UnicodeDammit(file_name).unicode_markup.encode('utf-8')
             if hasattr(file_name, 'decode'):
                 file_name = file_name.decode('utf-8')
 
@@ -522,7 +565,7 @@ class MsgFileParserConnector(BaseConnector):
 
         if not string:
             return ''
-        string = UnicodeDammit(string).unicode_markup.encode('utf-8')
+        string = bs4.UnicodeDammit(string).unicode_markup.encode('utf-8')
         if hasattr(string, 'decode'):
             string = string.decode('utf-8')
 

@@ -24,6 +24,10 @@
     "pip_dependencies": {
         "wheel": [
             {
+                "module": "Django",
+                "input_file": "wheels/Django-3.2.16-py3-none-any.whl"
+            },
+            {
                 "module": "olefile",
                 "input_file": "wheels/olefile-0.45.1-py2.py3-none-any.whl"
             },
