@@ -466,12 +466,12 @@ class MsgFileParserConnector(BaseConnector):
                     self.replace_tag_rec(link, soup)
                     new_tag = soup.new_tag("p")
                     if link.get('href'):
-                        if self._validate_url(link.get('href')) or (child.get('href').startswith('mailto:')):
+                        if self._validate_url(link.get('href')) or (link.get('href').startswith('mailto:')):
                             new_tag.string = " <" + link.get('href') + "> " + link.text
                         else:
                             new_tag.string = link.text
                     elif link.get('src'):
-                        if self._validate_url(link.get('src')) or (child.get('href').startswith('mailto:')):
+                        if self._validate_url(link.get('src')) or (link.get('href').startswith('mailto:')):
                             new_tag.string = " <" + link.get('src') + "> " + link.text
                         else:
                             new_tag.string = link.text
