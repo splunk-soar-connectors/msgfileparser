@@ -12,7 +12,6 @@ from phantom.vault import Vault
 import phantom.rules as ph_rules
 
 import requests
-import bs4
 import json
 import tempfile
 import os
@@ -21,6 +20,7 @@ import hashlib
 import base64
 import quopri
 import re
+from bs4 import BeautifulSoup, UnicodeDammit
 from ExtractMsg import Message
 from requests.structures import CaseInsensitiveDict
 from django.core.validators import URLValidator
@@ -103,7 +103,7 @@ class MsgFileParserConnector(BaseConnector):
         status_code = response.status_code
 
         try:
-            soup = bs4.BeautifulSoup(response.text, "html.parser")
+            soup = BeautifulSoup(response.text, "html.parser")
             error_text = soup.text
             split_lines = error_text.split('\n')
             split_lines = [x.strip() for x in split_lines if x.strip()]
@@ -432,7 +432,7 @@ class MsgFileParserConnector(BaseConnector):
         try:
             body_html = msg._getStringStream('__substg1.0_1013')
             if body_html:
-                soup = bs4.BeautifulSoup(body_html, 'html.parser')
+                soup = BeautifulSoup(body_html, 'html.parser')
                 body_html = soup.prettify()
                 try:
                     cef_artifact['bodyHtml'] = body_html.decode('utf-8', 'replace').replace(u'\u0000', '')
@@ -500,7 +500,7 @@ class MsgFileParserConnector(BaseConnector):
 
             # get the file name
             file_name = (curr_attach.longFilename or curr_attach.shortFilename or 'attached_file-{0}'.format(i))
-            file_name = bs4.UnicodeDammit(file_name).unicode_markup.encode('utf-8')
+            file_name = UnicodeDammit(file_name).unicode_markup.encode('utf-8')
             if hasattr(file_name, 'decode'):
                 file_name = file_name.decode('utf-8')
 
@@ -541,7 +541,7 @@ class MsgFileParserConnector(BaseConnector):
 
         if not string:
             return ''
-        string = bs4.UnicodeDammit(string).unicode_markup.encode('utf-8')
+        string = UnicodeDammit(string).unicode_markup.encode('utf-8')
         if hasattr(string, 'decode'):
             string = string.decode('utf-8')
 
