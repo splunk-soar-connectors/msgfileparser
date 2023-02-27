@@ -4,28 +4,29 @@
 # SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
 # without a valid written license from Splunk Inc. is PROHIBITED.
 
-# Phantom App imports
-import phantom.app as phantom
-from phantom.base_connector import BaseConnector
-from phantom.action_result import ActionResult
-from phantom.vault import Vault
-import phantom.rules as ph_rules
-
-import requests
-import json
-import tempfile
-import os
+import base64
 import email
 import hashlib
-import base64
+import json
+import os
 import quopri
 import re
-from bs4 import BeautifulSoup, UnicodeDammit
-from ExtractMsg import Message
-from requests.structures import CaseInsensitiveDict
-from django.core.validators import URLValidator
-from msgfileparser_consts import *
+import tempfile
+from email.parser import Parser as EmailParser
 
+# Phantom App imports
+import phantom.app as phantom
+import phantom.rules as ph_rules
+import requests
+from bs4 import BeautifulSoup, UnicodeDammit
+from django.core.validators import URLValidator
+from ExtractMsg import Message
+from phantom.action_result import ActionResult
+from phantom.base_connector import BaseConnector
+from phantom.vault import Vault
+from requests.structures import CaseInsensitiveDict
+
+from msgfileparser_consts import *
 
 _container_common = {
     "run_automation": False  # Don't run any playbooks, when this artifact is added
@@ -393,7 +394,18 @@ class MsgFileParserConnector(BaseConnector):
                             self.debug_print("Error occurred while logging the email text in _create_email_artifact")
                 headers = self._get_email_headers_from_mail(mail, charset)
             else:
-                headers_data = msg._header
+                try:
+                    headers_data = msg._header
+                except:
+                    header = EmailParser().parsestr('')
+                    header.add_header('Date', None)
+                    header.add_header('From', None)
+                    header.add_header('To', None)
+                    header.add_header('Cc', None)
+                    header.add_header('Message-Id', None)
+                    # TODO find authentication results outside of header
+                    header.add_header('Authentication-Results', None)
+                    headers_data = header
                 if not headers_data:
                     return action_result.set_status(phantom.APP_ERROR, "Unable to get email headers from message")
                 headers_dict = headers_data.__dict__
@@ -737,8 +749,9 @@ class MsgFileParserConnector(BaseConnector):
 
 if __name__ == '__main__':
 
-    import pudb
     import argparse
+
+    import pudb
 
     pudb.set_trace()
 
