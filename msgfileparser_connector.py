@@ -21,6 +21,7 @@ import requests
 from bs4 import BeautifulSoup, UnicodeDammit
 from django.core.validators import URLValidator
 from ExtractMsg import Message
+from email.header import decode_header
 from phantom.action_result import ActionResult
 from phantom.base_connector import BaseConnector
 from phantom.vault import Vault
@@ -198,6 +199,68 @@ class MsgFileParserConnector(BaseConnector):
                 "Error Connecting to server. Details: {0}".format(error_msg)), resp_json)
 
         return self._process_response(r, action_result)
+    
+    def _decode_uni_string(self, input_str, def_name):
+
+        # try to find all the decoded strings, we could have multiple decoded strings
+        # or a single decoded string between two normal strings separated by \r\n
+        # YEAH...it could get that messy
+
+        input_str = input_str.replace('\r\n', '')
+        encoded_strings = re.findall(r'=\?.*\?=', input_str, re.I)
+
+        # return input_str as is, no need to do any conversion
+        if not encoded_strings:
+            return input_str
+
+        # get the decoded strings
+        try:
+            decoded_strings = [decode_header(x)[0] for x in encoded_strings]
+            decoded_strings = [{'value': x[0], 'encoding': x[1]} for x in decoded_strings]
+        except Exception as e:
+            error_message = self._get_error_message_from_exception(e)
+            self.debug_print("Decoding: {0}. {1}".format(encoded_strings, error_message))
+            return def_name
+
+        # convert to dict for safe access, if it's an empty list, the dict will be empty
+        decoded_strings = dict(enumerate(decoded_strings))
+
+        for i, encoded_string in enumerate(encoded_strings):
+
+            decoded_string = decoded_strings.get(i)
+
+            if not decoded_string:
+                # nothing to replace with
+                continue
+
+            value = decoded_string.get('value')
+            encoding = decoded_string.get('encoding')
+
+            if not encoding or not value:
+                # nothing to replace with
+                continue
+
+            try:
+                # Some non-ascii characters were causing decoding issue with
+                # the UnicodeDammit and working correctly with the decode function.
+                # keeping previous logic in the except block incase of failure.
+                value = value.decode(encoding)
+                input_str = input_str.replace(encoded_string, value)
+            except Exception:
+                try:
+                    if encoding != 'utf-8':
+                        value = str(value, encoding)
+                except Exception:
+                    pass
+
+                try:
+                    if value:
+                        value = UnicodeDammit(value).unicode_markup
+                        input_str = input_str.replace(encoded_string, value)
+                except Exception:
+                    pass
+
+        return input_str
 
     def _handle_test_connectivity(self, param):
 
@@ -314,7 +377,7 @@ class MsgFileParserConnector(BaseConnector):
         # handle the subject string, if required add a new key
         subject = headers.get('Subject')
         if subject:
-            headers['decodedSubject'] = subject
+            headers['decodedSubject'] = self._decode_uni_string(subject, subject)
 
         return headers
 
