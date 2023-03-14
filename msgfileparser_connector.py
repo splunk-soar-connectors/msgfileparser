@@ -1,5 +1,5 @@
 # File: msgfileparser_connector.py
-# Copyright (c) 2019-2021 Splunk Inc.
+# Copyright (c) 2019-2023 Splunk Inc.
 #
 # SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
 # without a valid written license from Splunk Inc. is PROHIBITED.
@@ -12,6 +12,7 @@ import os
 import quopri
 import re
 import tempfile
+from email.header import decode_header
 from email.parser import Parser as EmailParser
 
 # Phantom App imports
@@ -21,7 +22,6 @@ import requests
 from bs4 import BeautifulSoup, UnicodeDammit
 from django.core.validators import URLValidator
 from ExtractMsg import Message
-from email.header import decode_header
 from phantom.action_result import ActionResult
 from phantom.base_connector import BaseConnector
 from phantom.vault import Vault
@@ -87,7 +87,8 @@ class MsgFileParserConnector(BaseConnector):
             if parameter < 0:
                 return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_INVALID_INT_ERR.format(msg="non-negative", param=key)), None
             if not allow_zero and parameter == 0:
-                return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_INVALID_INT_ERR.format(msg="non-zero positive", param=key)), None
+                return action_result.set_status(
+                    phantom.APP_ERROR, MSGFILEPARSER_INVALID_INT_ERR.format(msg="non-zero positive", param=key)), None
 
         return phantom.APP_SUCCESS, parameter
 
@@ -199,7 +200,7 @@ class MsgFileParserConnector(BaseConnector):
                 "Error Connecting to server. Details: {0}".format(error_msg)), resp_json)
 
         return self._process_response(r, action_result)
-    
+
     def _decode_uni_string(self, input_str, def_name):
 
         # try to find all the decoded strings, we could have multiple decoded strings
@@ -435,7 +436,8 @@ class MsgFileParserConnector(BaseConnector):
 
                 # When '_headers' = [] (empty-list), bool(mail) returns False
                 if not mail:
-                    self.debug_print("Trying to fetch the headers information by an alternative approach of extraction of additional headers prefix data")
+                    self.debug_print(
+                        "Trying to fetch the headers information by an alternative approach of extraction of additional headers prefix data")
                     first_col_ind = email_text.find(":")
                     first_lf_ind = email_text.find("\n")
                     # Check if there is additional prefix before original headers string, if yes,
@@ -498,7 +500,8 @@ class MsgFileParserConnector(BaseConnector):
         # if the header did not contain any email addresses then ignore this artifact
         message_id = headers.get('message-id')
         if (not cef_artifact) and (message_id is None):
-            return action_result.set_status(phantom.APP_ERROR, "Unable to fetch the fromEmail, toEmail, and message ID information from the provided MSG file")
+            return action_result.set_status(
+                phantom.APP_ERROR, "Unable to fetch the fromEmail, toEmail, and message ID information from the provided MSG file")
         try:
             cef_artifact['bodyText'] = self._extract_str(msg.body).decode('utf-8', 'replace').replace(u'\u0000', '')
         except:
