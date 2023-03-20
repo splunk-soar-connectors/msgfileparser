@@ -127,9 +127,9 @@ class MsgFileParserConnector(BaseConnector):
         try:
             resp_json = r.json()
         except Exception as e:
-            error_msg = self._get_error_message_from_exception(e)
+            error_message = self._get_error_message_from_exception(e)
             return RetVal(action_result.set_status(phantom.APP_ERROR,
-                "Unable to parse JSON response. Error: {0}".format(error_msg)), None)
+                "Unable to parse JSON response. Error: {0}".format(error_message)), None)
 
         # Please specify the status codes here
         if 200 <= r.status_code < 399:
@@ -195,9 +195,9 @@ class MsgFileParserConnector(BaseConnector):
                             verify=config.get('verify_server_cert', False),
                             params=params)
         except Exception as e:
-            error_msg = self._get_error_message_from_exception(e)
+            error_message = self._get_error_message_from_exception(e)
             return RetVal(action_result.set_status( phantom.APP_ERROR,
-                "Error Connecting to server. Details: {0}".format(error_msg)), resp_json)
+                "Error Connecting to server. Details: {0}".format(error_message)), resp_json)
 
         return self._process_response(r, action_result)
 
@@ -302,8 +302,8 @@ class MsgFileParserConnector(BaseConnector):
                 return action_result.set_status(phantom.APP_ERROR, "Failed to get vault info of extracted file. Error: {0}".format(message))
             vault_info = list(vault_info)[0]
         except Exception as e:
-            error_msg = self._get_error_message_from_exception(e)
-            return action_result.set_status(phantom.APP_ERROR, "Failed to get vault info of extracted file. Error: {0}".format(error_msg))
+            error_message = self._get_error_message_from_exception(e)
+            return action_result.set_status(phantom.APP_ERROR, "Failed to get vault info of extracted file. Error: {0}".format(error_message))
 
         # /rest/container_attachment (with pretty) returns metadata about the file including multiple common hash formats
         try:
@@ -407,8 +407,8 @@ class MsgFileParserConnector(BaseConnector):
             decoded_header = '{}{}'.format(decoded_header, hdr)
             return decoded_header
         except Exception as e:
-            error_msg = self._get_error_message_from_exception(e)
-            decoded_header = 'Unable to decode header: {}'.format(error_msg)
+            error_message = self._get_error_message_from_exception(e)
+            decoded_header = 'Unable to decode header: {}'.format(error_message)
             return decoded_header
 
     def _validate_url(self, url):
@@ -476,9 +476,9 @@ class MsgFileParserConnector(BaseConnector):
                 headers_dict = headers_data.__dict__
                 headers = self._get_email_headers_from_mail(None, charset, email_headers=headers_dict.get('_headers'))
         except Exception as e:
-            error_msg = self._get_error_message_from_exception(e)
+            error_message = self._get_error_message_from_exception(e)
             return action_result.set_status(phantom.APP_ERROR,
-                    "Unable to get email header string from message. Error: {0}".format(error_msg))
+                    "Unable to get email header string from message. Error: {0}".format(error_message))
 
         if not headers:
             return action_result.set_status(phantom.APP_ERROR, "Unable to fetch the headers information from the provided MSG file")
@@ -559,11 +559,11 @@ class MsgFileParserConnector(BaseConnector):
         try:
             input_dict_str = json.dumps(input_dict, sort_keys=True)
         except Exception as e:
-            error_msg = self._get_error_message_from_exception(e)
-            self.debug_print('Handled exception in _create_dict_hash. Error: {0}'.format(error_msg))
+            error_message = self._get_error_message_from_exception(e)
+            self.debug_print('Handled exception in _create_dict_hash. Error: {0}'.format(error_message))
             return None
 
-        return hashlib.md5(input_dict_str.encode('utf-8')).hexdigest()
+        return hashlib.md5(input_dict_str.encode('utf-8')).hexdigest()   # nosemgrep
 
     def _add_attachments_to_container(self, msg, container_id, artifact_severity, run_auto_flag, action_result):
 
@@ -590,9 +590,9 @@ class MsgFileParserConnector(BaseConnector):
                 os.write(fd, curr_attach.data)
                 os.close(fd)
             except Exception as e:
-                error_msg = self._get_error_message_from_exception(e)
+                error_message = self._get_error_message_from_exception(e)
                 return RetVal(action_result.set_status(phantom.APP_ERROR,
-                        "Unable to write file to tmp folder for attachment number: {0}. Error: {1}".format(i, error_msg)))
+                        "Unable to write file to tmp folder for attachment number: {0}. Error: {1}".format(i, error_message)))
 
             try:
                 success, message, vault_id = ph_rules.vault_add(container=container_id, file_location=tmp_file_path, file_name=file_name)
@@ -602,9 +602,9 @@ class MsgFileParserConnector(BaseConnector):
                     return RetVal(action_result.set_status(phantom.APP_ERROR, "Unable to add file to the vault: {}".format(message)))
 
             except Exception as e:
-                error_msg = self._get_error_message_from_exception(e)
+                error_message = self._get_error_message_from_exception(e)
                 return RetVal(action_result.set_status(phantom.APP_ERROR,
-                        "Unable to add file to the vault for attachment number: {0}. Error: {1}".format(i, error_msg)))
+                        "Unable to add file to the vault for attachment number: {0}. Error: {1}".format(i, error_message)))
 
             ret_val, vault_artifact = self._get_vault_artifact(vault_id, file_name, action_result)
             if ret_val and vault_artifact:
@@ -643,8 +643,8 @@ class MsgFileParserConnector(BaseConnector):
                 artifacts = self._sanitize_dict(artifacts)
                 status, message, id_list = self.save_artifacts(artifacts)
             except Exception as e:
-                error_msg = self._get_error_message_from_exception(e)
-                return action_result.set_status(phantom.APP_ERROR, "Error Occurred while saving artifacts : {}".format(error_msg))
+                error_message = self._get_error_message_from_exception(e)
+                return action_result.set_status(phantom.APP_ERROR, "Error Occurred while saving artifacts : {}".format(error_message))
         else:
             # No IOCS found
             return action_result.set_status(phantom.APP_SUCCESS)
@@ -709,14 +709,14 @@ class MsgFileParserConnector(BaseConnector):
             vault_info = list(vault_info)[0]
             vault_path = vault_info['path']
         except Exception as e:
-            error_msg = self._get_error_message_from_exception(e)
-            return action_result.set_status(phantom.APP_ERROR, "Failed to get vault info before extracting: {}".format(error_msg))
+            error_message = self._get_error_message_from_exception(e)
+            return action_result.set_status(phantom.APP_ERROR, "Failed to get vault info before extracting: {}".format(error_message))
 
         try:
             msg = Message(vault_path)
         except Exception as e:
-            error_msg = self._get_error_message_from_exception(e)
-            return action_result.set_status(phantom.APP_ERROR, "Failed to parse message. Error: {0}".format(error_msg))
+            error_message = self._get_error_message_from_exception(e)
+            return action_result.set_status(phantom.APP_ERROR, "Failed to parse message. Error: {0}".format(error_message))
 
         # the list of artifacts will be stored in this var
         artifacts = list()

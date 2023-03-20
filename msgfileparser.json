@@ -15,6 +15,7 @@
     "package_name": "phantom_msgfileparser",
     "main_module": "msgfileparser_connector.py",
     "min_phantom_version": "5.5.0",
+    "fips_compliant": true,
     "python_version": "3",
     "latest_tested_versions": [
         "Module ExtractMsg-0.3-py2.py3-none-any.whl"
