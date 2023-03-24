@@ -13,7 +13,6 @@ import quopri
 import re
 import tempfile
 from email.header import decode_header
-from email.parser import Parser as EmailParser
 
 # Phantom App imports
 import phantom.app as phantom
@@ -459,18 +458,7 @@ class MsgFileParserConnector(BaseConnector):
                             self.debug_print("Error occurred while logging the email text in _create_email_artifact")
                 headers = self._get_email_headers_from_mail(mail, charset)
             else:
-                try:
-                    headers_data = msg._header
-                except:
-                    header = EmailParser().parsestr('')
-                    header.add_header('Date', None)
-                    header.add_header('From', None)
-                    header.add_header('To', None)
-                    header.add_header('Cc', None)
-                    header.add_header('Message-Id', None)
-                    # TODO find authentication results outside of header
-                    header.add_header('Authentication-Results', None)
-                    headers_data = header
+                headers_data = msg._header
                 if not headers_data:
                     return action_result.set_status(phantom.APP_ERROR, "Unable to get email headers from message")
                 headers_dict = headers_data.__dict__
