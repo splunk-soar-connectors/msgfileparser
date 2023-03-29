@@ -9,20 +9,25 @@
     "product_name": "MSG File Parser",
     "product_version_regex": ".*",
     "publisher": "Splunk",
-    "license": "Copyright (c) 2019-2021 Splunk Inc.",
-    "app_version": "2.3.0-CS",
+    "license": "Copyright (c) 2019-2023 Splunk Inc.",
+    "app_version": "2.4.0-CS",
     "utctime_updated": "2019-11-19T20:21:31.000000Z",
     "package_name": "phantom_msgfileparser",
     "main_module": "msgfileparser_connector.py",
-    "min_phantom_version": "5.0.0",
+    "min_phantom_version": "5.5.0",
+    "fips_compliant": true,
     "python_version": "3",
     "latest_tested_versions": [
-        "Module ExtractMsg-0.3-py2-none-any.whl"
+        "Module ExtractMsg-0.3-py2.py3-none-any.whl"
     ],
     "app_wizard_version": "1.0.0",
     "configuration": {},
     "pip_dependencies": {
         "wheel": [
+            {
+                "module": "Django",
+                "input_file": "wheels/Django-3.2.16-py3-none-any.whl"
+            },
             {
                 "module": "olefile",
                 "input_file": "wheels/olefile-0.45.1-py2.py3-none-any.whl"
@@ -33,7 +38,7 @@
             },
             {
                 "module": "ExtractMsg",
-                "input_file": "wheels/ExtractMsg-0.3-py2-none-any.whl"
+                "input_file": "wheels/ExtractMsg-0.3-py2.py3-none-any.whl"
             },
             {
                 "module": "IMAPClient",
