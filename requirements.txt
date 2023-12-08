@@ -2,4 +2,3 @@ beautifulsoup4==4.9.1
 compoundfiles==0.3
 compressed_rtf==1.0.6
 outlookmsgfile==0.1.0
-requests==2.25.0
