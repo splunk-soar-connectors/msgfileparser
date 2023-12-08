@@ -67,17 +67,17 @@ class MsgFileParserConnector(BaseConnector):
         if parameter is not None:
             try:
                 if not float(parameter).is_integer():
-                    return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_INVALID_INT_ERR.format(msg="", param=key)), None
+                    return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_INVALID_INT_ERR.format(message="", param=key)), None
 
                 parameter = int(parameter)
             except:
-                return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_INVALID_INT_ERR.format(msg="", param=key)), None
+                return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_INVALID_INT_ERR.format(message="", param=key)), None
 
             if parameter < 0:
-                return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_INVALID_INT_ERR.format(msg="non-negative", param=key)), None
+                return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_INVALID_INT_ERR.format(message="non-negative", param=key)), None
             if not allow_zero and parameter == 0:
                 return action_result.set_status(phantom.APP_ERROR,
-                    MSGFILEPARSER_INVALID_INT_ERR.format(msg="non-zero positive", param=key)), None
+                    MSGFILEPARSER_INVALID_INT_ERR.format(message="non-zero positive", param=key)), None
 
         return phantom.APP_SUCCESS, parameter
 
@@ -88,19 +88,19 @@ class MsgFileParserConnector(BaseConnector):
         """
 
         error_code = MSGFILEPARSER_ERR_CODE_UNAVAILABLE
-        error_msg = MSGFILEPARSER_ERR_MSG_UNAVAILABLE
+        error_message = MSGFILEPARSER_ERR_MSG_UNAVAILABLE
 
         try:
             if e.args:
                 if len(e.args) > 1:
                     error_code = e.args[0]
-                    error_msg = str(e)
+                    error_message = str(e)
                 elif len(e.args) == 1:
-                    error_msg = e.args[0]
+                    error_message = e.args[0]
         except:
             pass
 
-        return "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+        return "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
 
     def _add_vault_hashes_to_dictionary(self, cef_artifact, vault_id, action_result):
 
@@ -108,8 +108,8 @@ class MsgFileParserConnector(BaseConnector):
             success, message, vault_info = ph_rules.vault_info(vault_id=vault_id)
             vault_info = list(vault_info)[0]
         except Exception as e:
-            error_msg = self._get_error_message_from_exception(e)
-            self.debug_print("{}. Error: {}".format(MSGFILEPARSER_VAULT_INFO_EXTRACTION_ERR, error_msg))
+            error_message = self._get_error_message_from_exception(e)
+            self.debug_print("{}. Error: {}".format(MSGFILEPARSER_VAULT_INFO_EXTRACTION_ERR, error_message))
             return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_VAULT_INFO_EXTRACTION_ERR)
 
         if not vault_info:
@@ -217,8 +217,8 @@ class MsgFileParserConnector(BaseConnector):
             decoded_strings = [decode_header(x)[0] for x in encoded_strings]
             decoded_strings = [{'value': x[0], 'encoding': x[1]} for x in decoded_strings]
         except Exception as e:
-            error_msg = self._get_error_message_from_exception(e)
-            self.debug_print("Decoding: {0}. {1}".format(encoded_strings, error_msg))
+            error_message = self._get_error_message_from_exception(e)
+            self.debug_print("Decoding: {0}. {1}".format(encoded_strings, error_message))
             return def_name
 
         new_str_list = []
@@ -416,8 +416,8 @@ class MsgFileParserConnector(BaseConnector):
                     with open(tmp_file_path, 'wb') as f:
                         f.write(part_payload)
                 except Exception as e:
-                    error_msg = self._get_error_message_from_exception(e)
-                    self.debug_print(MSGFILEPARSER_UNABLE_TO_WRITE_FILE_ERR.format(file_name, error_msg))
+                    error_message = self._get_error_message_from_exception(e)
+                    self.debug_print(MSGFILEPARSER_UNABLE_TO_WRITE_FILE_ERR.format(file_name, error_message))
                     continue
 
                 # Save attachment file to the vault
@@ -429,8 +429,8 @@ class MsgFileParserConnector(BaseConnector):
                     )
 
                 except Exception as e:
-                    error_msg = self._get_error_message_from_exception(e)
-                    self.debug_print(MSGFILEPARSER_UNABLE_TO_ADD_FILE_ERR.format(file_name, error_msg))
+                    error_message = self._get_error_message_from_exception(e)
+                    self.debug_print(MSGFILEPARSER_UNABLE_TO_ADD_FILE_ERR.format(file_name, error_message))
                     continue
 
                 # Create Vault artifact
@@ -465,8 +465,8 @@ class MsgFileParserConnector(BaseConnector):
         try:
             soup = BeautifulSoup(file_data, "html.parser")
         except Exception as e:
-            error_code, error_msg = self._get_error_message_from_exception(e)
-            err = "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+            error_code, error_message = self._get_error_message_from_exception(e)
+            err = "Error Code: {0}. Error Message: {1}".format(error_code, error_message)
             return action_result.set_status(phantom.APP_ERROR, err)
 
         uris = []
@@ -567,7 +567,7 @@ class MsgFileParserConnector(BaseConnector):
         if not container.get('name'):
             container['name'] = os.path.basename(vault_path)
 
-        # we don't/can't add a raw_email to this container, .msg file does not contain the email
+        # we don't/can't add a raw_email to this container, .message file does not contain the email
         # in rfc822 format
         container['source_data_identifier'] = self._create_dict_hash(container)
         container['label'] = label
@@ -602,25 +602,25 @@ class MsgFileParserConnector(BaseConnector):
             if phantom.is_fail(ret_val):
                 return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_CONTAINERS_NOT_FOUND_ERR.format(message))
 
-        # get the .msg file from the vault
+        # get the .message file from the vault
         vault_id = param['vault_id']
         try:
             success, message, vault_info = ph_rules.vault_info(vault_id=vault_id)
             vault_info = list(vault_info)[0]
             vault_path = vault_info['path']
         except Exception as e:
-            error_msg = self._get_error_message_from_exception(e)
-            self.debug_print("{}. Error: {}".format(MSGFILEPARSER_VAULT_INFO_BEFORE_EXTRACTION_ERR, error_msg))
+            error_message = self._get_error_message_from_exception(e)
+            self.debug_print("{}. Error: {}".format(MSGFILEPARSER_VAULT_INFO_BEFORE_EXTRACTION_ERR, error_message))
             return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_VAULT_INFO_BEFORE_EXTRACTION_ERR)
 
         try:
             mail = outlookmsgfile.load(vault_path)
         except UnicodeDecodeError as e:
-            error_msg = self._get_error_message_from_exception(e)
-            return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_PARSER_DECODE_ERR.format(error_msg))
+            error_message = self._get_error_message_from_exception(e)
+            return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_PARSER_DECODE_ERR.format(error_message))
         except Exception as e:
-            error_msg = self._get_error_message_from_exception(e)
-            self.debug_print("{} Error: {}".format(MSGFILEPARSER_PARSER_MSG_FILE_ERR, error_msg))
+            error_message = self._get_error_message_from_exception(e)
+            self.debug_print("{} Error: {}".format(MSGFILEPARSER_PARSER_MSG_FILE_ERR, error_message))
             return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_PARSER_MSG_FILE_ERR)
 
         # the list of artifacts will be stored in this var
@@ -688,12 +688,12 @@ class MsgFileParserConnector(BaseConnector):
                                     artifacts.extend(domain_artifacts)
                                 break
                         except Exception as e:
-                            error_msg = self._get_error_message_from_exception(e)
-                            self.debug_print("Stream missing for bodyHtml. {}.".format(error_msg))
+                            error_message = self._get_error_message_from_exception(e)
+                            self.debug_print("Stream missing for bodyHtml. {}.".format(error_message))
                             break
         except Exception as e:
-            error_msg = self._get_error_message_from_exception(e)
-            self.debug_print("Unable to read bodyHtml from file. {}.".format(error_msg))
+            error_message = self._get_error_message_from_exception(e)
+            self.debug_print("Unable to read bodyHtml from file. {}.".format(error_message))
 
         # now add all the artifacts
         ret_val, saved_artifact_count = self._save_to_existing_container(action_result, artifacts, container_id)
