@@ -21,7 +21,6 @@ import json
 import os
 import quopri
 import re
-import tempfile
 from email.header import decode_header
 
 import outlookmsgfile
@@ -401,33 +400,18 @@ class MsgFileParserConnector(BaseConnector):
                     continue
                 file_name = self._decode_uni_string(file_name, file_name)
 
-                # Save attachment to temp location
-                try:
-                    if hasattr(Vault, 'get_vault_tmp_dir'):
-                        fd, tmp_file_path = tempfile.mkstemp(dir=Vault.get_vault_tmp_dir())
-                    else:
-                        fd, tmp_file_path = tempfile.mkstemp(dir='/opt/phantom/vault/tmp')
-                    os.close(fd)
-
-                    part_payload = part.get_payload(decode=True)
-                    if not part_payload:
-                        self.debug_print("Skipping Empty payload")
-                        continue
-                    with open(tmp_file_path, 'wb') as f:
-                        f.write(part_payload)
-                except Exception as e:
-                    error_message = self._get_error_message_from_exception(e)
-                    self.debug_print(MSGFILEPARSER_UNABLE_TO_WRITE_FILE_ERR.format(file_name, error_message))
+                part_payload = part.get('payload')
+                if not part_payload:
+                    self.debug_print("Skipping empty payload")
                     continue
 
-                # Save attachment file to the vault
                 try:
-                    success, message, attachment_vault_id = ph_rules.vault_add(
-                        container=container_id,
-                        file_location=tmp_file_path,
-                        file_name=file_name
+                    result = Vault.create_attachment(
+                        file_contents=part_payload,
+                        container_id=container_id,
+                        file_name=file_name,
                     )
-
+                    self.debug_print(result)
                 except Exception as e:
                     error_message = self._get_error_message_from_exception(e)
                     self.debug_print(MSGFILEPARSER_UNABLE_TO_ADD_FILE_ERR.format(file_name, error_message))
