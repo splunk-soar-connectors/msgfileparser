@@ -25,16 +25,24 @@
     "pip_dependencies": {
         "wheel": [
             {
-                "module": "outlookmsgfile",
-                "input_file": "wheels/convert_outlook_msg_file-0.1.0-py2.py3-none-any.whl"
+                "module": "beautifulsoup4",
+                "input_file": "wheels/py3/beautifulsoup4-4.9.1-py3-none-any.whl"
             },
             {
                 "module": "compoundfiles",
-                "input_file": "wheels/compoundfiles-0.3-py2.py3-none-any.whl"
+                "input_file": "wheels/shared/compoundfiles-0.3-py2.py3-none-any.whl"
             },
             {
                 "module": "compressed_rtf",
-                "input_file": "wheels/compressed_rtf-1.0.6-py2.py3-none-any.whl"
+                "input_file": "wheels/shared/compressed_rtf-1.0.6-py2.py3-none-any.whl"
+            },
+            {
+                "module": "convert_outlook_msg_file",
+                "input_file": "wheels/py3/convert_outlook_msg_file-0.1.0-py3-none-any.whl"
+            },
+            {
+                "module": "soupsieve",
+                "input_file": "wheels/py3/soupsieve-2.3.2.post1-py3-none-any.whl"
             }
         ]
     },
@@ -227,5 +235,29 @@
             },
             "versions": "EQ(*)"
         }
-    ]
+    ],
+    "pip39_dependencies": {
+        "wheel": [
+            {
+                "module": "beautifulsoup4",
+                "input_file": "wheels/py3/beautifulsoup4-4.9.1-py3-none-any.whl"
+            },
+            {
+                "module": "compoundfiles",
+                "input_file": "wheels/shared/compoundfiles-0.3-py2.py3-none-any.whl"
+            },
+            {
+                "module": "compressed_rtf",
+                "input_file": "wheels/shared/compressed_rtf-1.0.6-py2.py3-none-any.whl"
+            },
+            {
+                "module": "convert_outlook_msg_file",
+                "input_file": "wheels/py3/convert_outlook_msg_file-0.1.0-py3-none-any.whl"
+            },
+            {
+                "module": "soupsieve",
+                "input_file": "wheels/py3/soupsieve-2.5-py3-none-any.whl"
+            }
+        ]
+    }
 }
