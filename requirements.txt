@@ -1,3 +1,4 @@
 beautifulsoup4==4.9.1
 compoundfiles==0.3
-msg_parser[rtf]==1.2.0
+compressed_rtf==1.0.6
+msg_parser==1.2.0
