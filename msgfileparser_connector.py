@@ -15,25 +15,23 @@
 #
 #
 # Phantom App imports
-import base64
 import hashlib
 import json
 import os
-import quopri
 import re
+import socket
 from email.header import decode_header
 
-import outlookmsgfile
 import phantom.app as phantom
 import phantom.rules as ph_rules
 import phantom.utils as ph_utils
 import requests
 from bs4 import BeautifulSoup, UnicodeDammit
 from compoundfiles import CompoundFileReader
+from msg_parser import MsOxMessage
 from phantom.action_result import ActionResult
 from phantom.base_connector import BaseConnector
 from phantom.vault import Vault
-from requests.structures import CaseInsensitiveDict
 
 # Constants imports
 from msgfileparser_consts import *
@@ -147,62 +145,6 @@ class MsgFileParserConnector(BaseConnector):
 
         return (ret_val, vault_artifact)
 
-    def _get_email_headers_from_mail(self, mail, charset=None, email_headers=None):
-
-        if mail:
-            email_headers = list(mail.items())
-            if not email_headers:
-                return {}
-
-        if not charset:
-            charset = mail.get_content_charset() or 'utf-8'
-
-        # Convert the header tuple into a dictionary
-        headers = CaseInsensitiveDict()
-        received_headers = []
-        for x in email_headers:
-            try:
-                headers.update({x[0]: x[1].decode(charset)})
-                if x[0].lower() == 'received':
-                    received_headers.append(x[1].decode(charset))
-            except:
-                headers.update({x[0]: str(x[1])})
-                if x[0].lower() == 'received':
-                    received_headers.append(str(x[1]))
-
-        if received_headers:
-            headers['Received'] = received_headers
-
-        # Decode unicode subject
-        if '?UTF-8?' in headers.get('Subject', ""):
-            chars = 'utf-8'
-            headers['Subject'] = self._decode_subject(headers.get('Subject', ""), chars)
-
-        # handle the subject string, if required add a new key
-        subject = headers.get('Subject')
-        if subject:
-            if isinstance(subject, str):
-                headers['decodedSubject'] = self._decode_uni_string(subject, subject)
-
-        return headers
-
-    def _decode_subject(self, subject, charset):
-
-        # Decode subject unicode
-        decoded_subject = ''
-        subject = subject.split('?=\r\n\t=')
-        for sub in subject:
-            if '?UTF-8?B?' in sub:
-                sub = sub.replace('?UTF-8?B?', '').replace('?=', '')
-                sub = base64.b64decode(sub)
-            elif '?UTF-8?Q?' in sub:
-                sub = sub.replace('?UTF-8?Q?', '').replace('?=', '')
-                sub = quopri.decodestring(sub)
-            sub = sub.decode(charset)
-            decoded_subject = "{}{}".format(decoded_subject, sub)
-
-        return decoded_subject
-
     def _decode_uni_string(self, input_str, def_name):
 
         encoded_strings = re.findall(r'=\?.*\?=', input_str, re.I)
@@ -256,14 +198,8 @@ class MsgFileParserConnector(BaseConnector):
 
         return input_str
 
-    def _create_email_artifact(self, mail, email_artifact, action_result, artifact_name, charset=None):
-
-        try:
-            headers = self._get_email_headers_from_mail(mail)
-        except Exception as e:
-            return action_result.set_status(phantom.APP_ERROR,
-                    MSGFILEPARSER_EMAIL_HEADER_MSG_ERR.format(self._get_error_message_from_exception(e)))
-
+    def _create_email_artifact(self, mail: MsOxMessage, email_artifact, action_result, artifact_name, charset=None):
+        headers = mail.header_dict
         if not headers:
             return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_EMAIL_HEADER_FILE_ERR)
 
@@ -351,12 +287,12 @@ class MsgFileParserConnector(BaseConnector):
 
     def _is_ipv6(self, input_ip):
         try:
-            socket.inet_pton(socket.AF_INET6, input_iop)
+            socket.inet_pton(socket.AF_INET6, input_ip)
         except Exception:  # not a valid ipv6 address
             return False
         return True
 
-    def _add_attachments_to_container(self, mail, container_id, artifact_severity, run_auto_flag, action_result, email_artifact):
+    def _add_attachments_to_container(self, mail: MsOxMessage, container_id, artifact_severity, run_auto_flag, action_result, email_artifact):
 
         # get the attachments, domains and urls
         vault_artifacts = list()
@@ -366,74 +302,41 @@ class MsgFileParserConnector(BaseConnector):
         urls = set()
         domains = set()
 
-        if mail.is_multipart():
-            ret_val = None
-            for part in mail.walk():
-                if part.is_multipart():
-                    self.debug_print("Multipart skip attachment")
-                    continue
+        if 'bodyText' not in email_artifact['cef']:
+            email_artifact['cef']['bodyText'] = mail.body
+            self._extract_urls_domains(action_result, mail.body, urls, domains)
 
-                # Process if body
-                content_disp = part.get('Content-Disposition')
-                content_type = part.get('Content-Type')
+        for attachment in mail.attachments:
+            if not attachment.Filename:
+                self.debug_print("Skipping empty filename")
+                continue
+            file_name = self._decode_uni_string(attachment.Filename)
 
-                process_as_body = False
-                if content_disp is None:
-                    process_as_body = True
-                elif content_disp.lower().strip() == 'inline':
-                    if ('text/html' in content_type) or ('text/plain' in content_type):
-                        process_as_body = True
-                if process_as_body:
-                    body_payload = part.get_payload(decode=True)
-                    charset = part.get_content_charset() or 'utf-8'
-                    if hasattr(body_payload, 'decode'):
-                        body_payload = body_payload.decode(charset)
-                    if 'bodyText' not in email_artifact['cef']:
-                        email_artifact['cef']['bodyText'] = body_payload
-                        self._extract_urls_domains(action_result, body_payload, urls, domains)
-                    continue
+            if not attachment.data:
+                self.debug_print("Skipping empty paylod")
+                continue
+            part_payload = attachment.data
 
-                # Process Attachments
-                file_name = part.get_filename()
-                if not file_name:
-                    self.debug_print("Skipping Empty filename")
-                    continue
-                file_name = self._decode_uni_string(file_name, file_name)
+            try:
+                result = Vault.create_attachment(
+                    file_contents=part_payload,
+                    container_id=container_id,
+                    file_name=file_name,
+                )
+                self.debug_print(result)
+                attachment_vault_id = result.get('vault_id')
+            except Exception as e:
+                error_message = self._get_error_message_from_exception(e)
+                self.debug_print(MSGFILEPARSER_UNABLE_TO_ADD_FILE_ERR.format(file_name, error_message))
+                continue
 
-                part_payload = part.get('payload')
-                if not part_payload:
-                    self.debug_print("Skipping empty payload")
-                    continue
-
-                try:
-                    result = Vault.create_attachment(
-                        file_contents=part_payload,
-                        container_id=container_id,
-                        file_name=file_name,
-                    )
-                    self.debug_print(result)
-                except Exception as e:
-                    error_message = self._get_error_message_from_exception(e)
-                    self.debug_print(MSGFILEPARSER_UNABLE_TO_ADD_FILE_ERR.format(file_name, error_message))
-                    continue
-
-                # Create Vault artifact
-                ret_val, vault_artifact = self._get_vault_artifact(attachment_vault_id, file_name, action_result)
-                if ret_val and vault_artifact:
-                    vault_artifact['severity'] = artifact_severity
-                    if run_auto_flag is False:
-                        vault_artifact['run_automation'] = run_auto_flag
-                    vault_artifacts.append(vault_artifact)
-        else:
-            self.debug_print('Not multipart')
-            body_payload = mail.get_payload(decode=True)
-            charset = mail.get_content_charset() or 'utf-8'
-            if hasattr(body_payload, 'decode'):
-                body_payload = body_payload.decode(charset)
-            email_artifact['cef']['bodyText'] = body_payload
-
-            # Extract URLs and domains from file data
-            self._extract_urls_domains(action_result, body_payload, urls, domains)
+            # Create Vault artifact
+            ret_val, vault_artifact = self._get_vault_artifact(attachment_vault_id, file_name, action_result)
+            if ret_val and vault_artifact:
+                vault_artifact['severity'] = artifact_severity
+                if run_auto_flag is False:
+                    vault_artifact['run_automation'] = run_auto_flag
+                vault_artifacts.append(vault_artifact)
 
         self._add_artifacts('requestURL', urls, 'URL Artifact', 0, artifact_severity, url_artifacts)
         self._add_artifacts('destinationDnsDomain', domains, 'Domain Artifact', 0, artifact_severity, domain_artifacts)
@@ -598,7 +501,7 @@ class MsgFileParserConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_VAULT_INFO_BEFORE_EXTRACTION_ERR)
 
         try:
-            mail = outlookmsgfile.load(vault_path)
+            mail = MsOxMessage(vault_path)
         except UnicodeDecodeError as e:
             error_message = self._get_error_message_from_exception(e)
             return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_PARSER_DECODE_ERR.format(error_message))

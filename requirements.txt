@@ -1,4 +1,3 @@
 beautifulsoup4==4.9.1
 compoundfiles==0.3
-compressed_rtf==1.0.6
-convert-outlook-msg-file @ git+https://github.com/JoshData/convert-outlook-msg-file.git@6f1a6e4b4a54159eed17668ab66d5ee66a538731
+msg_parser[rtf]==1.2.0

@@ -37,8 +37,12 @@
                 "input_file": "wheels/shared/compressed_rtf-1.0.6-py2.py3-none-any.whl"
             },
             {
-                "module": "convert_outlook_msg_file",
-                "input_file": "wheels/py3/convert_outlook_msg_file-0.1.0-py3-none-any.whl"
+                "module": "msg_parser",
+                "input_file": "wheels/shared/msg_parser-1.2.0-py2.py3-none-any.whl"
+            },
+            {
+                "module": "olefile",
+                "input_file": "wheels/shared/olefile-0.47-py2.py3-none-any.whl"
             },
             {
                 "module": "soupsieve",
@@ -251,8 +255,12 @@
                 "input_file": "wheels/shared/compressed_rtf-1.0.6-py2.py3-none-any.whl"
             },
             {
-                "module": "convert_outlook_msg_file",
-                "input_file": "wheels/py3/convert_outlook_msg_file-0.1.0-py3-none-any.whl"
+                "module": "msg_parser",
+                "input_file": "wheels/shared/msg_parser-1.2.0-py2.py3-none-any.whl"
+            },
+            {
+                "module": "olefile",
+                "input_file": "wheels/shared/olefile-0.47-py2.py3-none-any.whl"
             },
             {
                 "module": "soupsieve",
