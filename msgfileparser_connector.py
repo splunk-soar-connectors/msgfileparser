@@ -200,8 +200,6 @@ class MsgFileParserConnector(BaseConnector):
 
     def _create_email_artifact(self, mail: MsOxMessage, email_artifact, action_result, artifact_name, charset=None):
         headers = mail.header_dict
-        if not headers:
-            return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_EMAIL_HEADER_FILE_ERR)
 
         # Parse email keys first
         cef_artifact = {}
@@ -310,7 +308,7 @@ class MsgFileParserConnector(BaseConnector):
             if not attachment.Filename:
                 self.debug_print("Skipping empty filename")
                 continue
-            file_name = self._decode_uni_string(attachment.Filename)
+            file_name = self._decode_uni_string(attachment.Filename, attachment.Filename)
 
             if not attachment.data:
                 self.debug_print("Skipping empty paylod")
@@ -502,6 +500,7 @@ class MsgFileParserConnector(BaseConnector):
 
         try:
             mail = MsOxMessage(vault_path)
+            self.debug_print(f'Mail: {mail}')
         except UnicodeDecodeError as e:
             error_message = self._get_error_message_from_exception(e)
             return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_PARSER_DECODE_ERR.format(error_message))
