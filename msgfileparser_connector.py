@@ -452,7 +452,7 @@ class MsgFileParserConnector(BaseConnector):
         if not container.get('name'):
             container['name'] = os.path.basename(vault_path)
 
-        # we don't/can't add a raw_email to this container, .message file does not contain the email
+        # we don't/can't add a raw_email to this container, .msg file does not contain the email
         # in rfc822 format
         container['source_data_identifier'] = self._create_dict_hash(container)
         container['label'] = label
@@ -487,7 +487,7 @@ class MsgFileParserConnector(BaseConnector):
             if phantom.is_fail(ret_val):
                 return action_result.set_status(phantom.APP_ERROR, MSGFILEPARSER_CONTAINERS_NOT_FOUND_ERR.format(message))
 
-        # get the .message file from the vault
+        # get the .msg file from the vault
         vault_id = param['vault_id']
         try:
             success, message, vault_info = ph_rules.vault_info(vault_id=vault_id)
