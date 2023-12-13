@@ -2,7 +2,7 @@
 # MSG File Parser
 
 Publisher: Splunk  
-Connector Version: 2.2.7  
+Connector Version: 2.2.8  
 Product Vendor: Phantom  
 Product Name: MSG File Parser  
 Product Version Supported (regex): ".\*"  
