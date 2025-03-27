@@ -1,26 +1,34 @@
 Splunk SOAR MSG File Parser
-Copyright (c) 2019-2023 Splunk Inc.
+Copyright (c) 2019-2025 Splunk Inc.
 
-Third-party Software Attributions:
+Third Party Software Attributions:
 
-Library: beautifulsoup4
+Name: beautifulsoup4
 Version: 4.9.1
+Author: Leonard Richardson
 License: MIT
-Copyright 2004-2017 Leonard Richardson
-Copyright 2004-2019 Leonard Richardson
-Copyright 2018 Isaac Muse
 
-Library: compoundfiles
+Name: compoundfiles
 Version: 0.3
-License: MIT
-Copyright 2014 Dave Hughes <dave@waveform.org.uk>
+Author: Dave Hughes
+License: MIT License
 
-Library: compressed-rtf
+Name: compressed-rtf
 Version: 1.0.6
+Author: Dmitry Alimov
 License: MIT
-Unknown copyright
 
-Library: requests
-Version: 2.25.0
-License: Apache 2.0
-Kenneth Reitz
+Name: msg-parser
+Version: 1.2.0
+Author: Vikram Arsid
+License: BSD
+
+Name: olefile
+Version: 0.47
+Author: Philippe Lagadec
+License: BSD
+
+Name: soupsieve
+Version: 2.6
+Author:
+License:
