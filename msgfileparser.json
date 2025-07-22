@@ -15,7 +15,7 @@
     "package_name": "phantom_msgfileparser",
     "main_module": "msgfileparser_connector.py",
     "min_phantom_version": "6.1.1",
-    "python_version": "3",
+    "python_version": ["3.9", "3.13"],
     "fips_compliant": true,
     "latest_tested_versions": [
         "Module outlookmsgfile, April 26 2021"
