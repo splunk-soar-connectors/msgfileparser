@@ -556,8 +556,8 @@ class MsgFileParserConnector(BaseConnector):
                                     email_artifact["cef"]["bodyText"] = soup.get_text()
                                     self._extract_urls_domains(action_result, value, urls, domains)
 
-                                    self._add_artifacts("requestURL", urls, "URL Artifact", 0, url_artifacts)
-                                    self._add_artifacts("destinationDnsDomain", domains, "Domain Artifact", 0, domain_artifacts)
+                                    self._add_artifacts("requestURL", urls, "URL Artifact", 0, severity, url_artifacts)
+                                    self._add_artifacts("destinationDnsDomain", domains, "Domain Artifact", 0, severity, domain_artifacts)
                                     artifacts.extend(url_artifacts)
                                     artifacts.extend(domain_artifacts)
                                 break
