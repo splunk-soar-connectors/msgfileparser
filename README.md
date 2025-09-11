@@ -1,9 +1,9 @@
 # MSG File Parser
 
-Publisher: Splunk \
-Connector Version: 2.2.8 \
-Product Vendor: Phantom \
-Product Name: MSG File Parser \
+Publisher: Splunk <br>
+Connector Version: 2.2.8 <br>
+Product Vendor: Phantom <br>
+Product Name: MSG File Parser <br>
 Minimum Product Version: 6.1.1
 
 This app parses an outlook .msg file and extracts IOCs into Container and Artifacts
@@ -31,7 +31,7 @@ Dmitry Alimov.
 
 Extract email data from Outlook MSG files
 
-Type: **generic** \
+Type: **generic** <br>
 Read only: **False**
 
 This action requires the input vault file to be an Outlook MSG file. This action creates artifacts for the email data (from, to, cc, date, subject, body) and the email's attachment(s).
