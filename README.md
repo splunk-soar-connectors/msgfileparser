@@ -1,7 +1,7 @@
 # MSG File Parser
 
 Publisher: Splunk <br>
-Connector Version: 2.2.8 <br>
+Connector Version: 2.2.9 <br>
 Product Vendor: Phantom <br>
 Product Name: MSG File Parser <br>
 Minimum Product Version: 6.1.1
