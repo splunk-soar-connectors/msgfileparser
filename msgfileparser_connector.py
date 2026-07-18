@@ -357,23 +357,26 @@ class MsgFileParserConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR, err)
 
         uris = []
-        # get all href tags
         links = soup.find_all(href=True)
         href_values = [self._remove_whatwg_whitespace(x["href"]) for x in links]
-        if links:
-            uris = [href for href in href_values if not href.lower().startswith("mailto:")]
-            uri_text = [self._clean_url(self._remove_whatwg_whitespace(x.get_text())) for x in links]
-            if uri_text:
-                uri_text = [x for x in uri_text if x.startswith("http")]
-                if uri_text:
-                    uris.extend(uri_text)
-        else:
-            # parse it as a text file
-            uris = re.findall(uri_regexc, self._remove_whatwg_whitespace(file_data))
-            if uris:
-                uris = [self._clean_url(x) for x in uris]
+        uris.extend(href for href in href_values if not href.lower().startswith("mailto:"))
+        uris.extend(self._remove_whatwg_whitespace(link.get_text()) for link in links)
+
+        for attribute in ("src", "action"):
+            uris.extend(self._remove_whatwg_whitespace(element[attribute]) for element in soup.find_all(**{attribute: True}))
+
+        for meta in soup.find_all("meta"):
+            if str(meta.get("http-equiv", "")).lower() != "refresh":
+                continue
+            content = self._remove_whatwg_whitespace(str(meta.get("content", "")))
+            match = re.search(r"(?:^|;)\s*url\s*=\s*(.+)\s*$", content, re.IGNORECASE)
+            if match:
+                uris.append(match.group(1).strip(" '\""))
+
+        uris.extend(re.findall(uri_regexc, self._remove_whatwg_whitespace(file_data)))
 
         uris = [self._normalize_url_scheme(self._clean_url(self._remove_whatwg_whitespace(uri))) for uri in uris]
+        uris = [uri for uri in uris if uri.lower().startswith(("http://", "https://"))]
         urls |= set(uris)
 
         # exctract domains
@@ -382,14 +385,10 @@ class MsgFileParserConnector(BaseConnector):
             if domain and not self._is_ip(domain):
                 domains.add(domain)
 
-        # work on any mailto urls if present
-        if links:
-            emails = [href for href in href_values if href.lower().startswith("mailto:")]
-        else:
-            # parse as text
-            emails = []
-            emails.extend(re.findall(email_regexc, file_data))
-            emails.extend(re.findall(email_regexc2, file_data))
+        # Work on mailto URLs and bare-text addresses independently.
+        emails = [href for href in href_values if href.lower().startswith("mailto:")]
+        emails.extend(re.findall(email_regexc, file_data))
+        emails.extend(re.findall(email_regexc2, file_data))
 
         for curr_email in emails:
             domain = curr_email[curr_email.find("@") + 1 :]
