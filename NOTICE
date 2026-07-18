@@ -1,5 +1,5 @@
 Splunk SOAR App: MSG File Parser
-Copyright (c) 2019-2025 Splunk Inc.
+Copyright (c) 2019-2026 Splunk Inc.
 Third Party Software Attributions:
 
 @@@@============================================================================
@@ -35,7 +35,7 @@ SOFTWARE.
 
 Library: compressed-rtf - 1.0.7
 Homepage: https://github.com/delimitry/compressed_rtf
-License: UNKNOWN
+License: MIT
 License Text:
 
 The MIT License (MIT)
@@ -89,4 +89,3 @@ GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWE
 AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 OF THE POSSIBILITY OF SUCH DAMAGE.
-

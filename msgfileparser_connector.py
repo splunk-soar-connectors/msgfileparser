@@ -1,6 +1,6 @@
 # File: msgfileparser_connector.py
 #
-# Copyright (c) 2019-2025 Splunk Inc.
+# Copyright (c) 2019-2026 Splunk Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -101,7 +101,7 @@ class MsgFileParserConnector(BaseConnector):
 
     def _add_vault_hashes_to_dictionary(self, cef_artifact, vault_id, action_result):
         try:
-            success, message, vault_info = ph_rules.vault_info(vault_id=vault_id)
+            _success, _message, vault_info = ph_rules.vault_info(vault_id=vault_id)
             vault_info = next(iter(vault_info))
         except Exception as e:
             error_message = self._get_error_message_from_exception(e)
@@ -488,7 +488,7 @@ class MsgFileParserConnector(BaseConnector):
         # get the .msg file from the vault
         vault_id = param["vault_id"]
         try:
-            success, message, vault_info = ph_rules.vault_info(vault_id=vault_id)
+            _success, message, vault_info = ph_rules.vault_info(vault_id=vault_id)
             vault_info = next(iter(vault_info))
             vault_path = vault_info["path"]
         except Exception as e:
