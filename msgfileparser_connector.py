@@ -278,6 +278,12 @@ class MsgFileParserConnector(BaseConnector):
 
         return url
 
+    def _normalize_url_scheme(self, url):
+        if "://" not in url:
+            return url
+        scheme, remainder = url.split("://", 1)
+        return f"{scheme.lower()}://{remainder}"
+
     def _is_ipv6(self, input_ip):
         try:
             socket.inet_pton(socket.AF_INET6, input_ip)
@@ -338,7 +344,7 @@ class MsgFileParserConnector(BaseConnector):
     def _extract_urls_domains(self, action_result, file_data, urls, domains):
         email_regexc = re.compile(EMAIL_REGEX, re.IGNORECASE)
         email_regexc2 = re.compile(EMAIL_REGEX2, re.IGNORECASE)
-        uri_regexc = re.compile(URI_REGEX)
+        uri_regexc = re.compile(URI_REGEX, re.IGNORECASE)
 
         try:
             soup = BeautifulSoup(file_data, "html.parser")
@@ -363,6 +369,7 @@ class MsgFileParserConnector(BaseConnector):
             if uris:
                 uris = [self._clean_url(x) for x in uris]
 
+        uris = [self._normalize_url_scheme(self._clean_url(uri)) for uri in uris]
         urls |= set(uris)
 
         # exctract domains
