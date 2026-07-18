@@ -284,6 +284,9 @@ class MsgFileParserConnector(BaseConnector):
         scheme, remainder = url.split("://", 1)
         return f"{scheme.lower()}://{remainder}"
 
+    def _remove_whatwg_whitespace(self, value):
+        return value.translate({ord("\t"): None, ord("\n"): None, ord("\r"): None})
+
     def _is_ipv6(self, input_ip):
         try:
             socket.inet_pton(socket.AF_INET6, input_ip)
@@ -356,20 +359,21 @@ class MsgFileParserConnector(BaseConnector):
         uris = []
         # get all href tags
         links = soup.find_all(href=True)
+        href_values = [self._remove_whatwg_whitespace(x["href"]) for x in links]
         if links:
-            uris = [x["href"] for x in links if not x["href"].startswith("mailto:")]
-            uri_text = [self._clean_url(x.get_text()) for x in links]
+            uris = [href for href in href_values if not href.lower().startswith("mailto:")]
+            uri_text = [self._clean_url(self._remove_whatwg_whitespace(x.get_text())) for x in links]
             if uri_text:
                 uri_text = [x for x in uri_text if x.startswith("http")]
                 if uri_text:
                     uris.extend(uri_text)
         else:
             # parse it as a text file
-            uris = re.findall(uri_regexc, file_data)
+            uris = re.findall(uri_regexc, self._remove_whatwg_whitespace(file_data))
             if uris:
                 uris = [self._clean_url(x) for x in uris]
 
-        uris = [self._normalize_url_scheme(self._clean_url(uri)) for uri in uris]
+        uris = [self._normalize_url_scheme(self._clean_url(self._remove_whatwg_whitespace(uri))) for uri in uris]
         urls |= set(uris)
 
         # exctract domains
@@ -380,7 +384,7 @@ class MsgFileParserConnector(BaseConnector):
 
         # work on any mailto urls if present
         if links:
-            emails = [x["href"] for x in links if x["href"].startswith("mailto")]
+            emails = [href for href in href_values if href.lower().startswith("mailto:")]
         else:
             # parse as text
             emails = []
